@@ -12,6 +12,7 @@
 
 struct msg_parts {
   char *operator,
+       *version,
     *taxi,
     *lat,
     *lon,
@@ -20,6 +21,7 @@ struct msg_parts {
     *device,
     *hash;
   short operator_len,
+	version_len,
     taxi_len,
     lat_len,
     lon_len,
@@ -43,6 +45,9 @@ static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
    parts->operator = js0n("operator",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->operator_len = len;
+   parts->version = js0n("version",0,msg,n,&len);
+   if (0 == len) { return -1; }
+   parts->version_len = len;
    parts->taxi = js0n("taxi",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->taxi_len = len;
@@ -72,6 +77,7 @@ static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
    parts->lon[parts->lon_len] = '\0';
    parts->lat[parts->lat_len] = '\0';
    parts->taxi[parts->taxi_len] = '\0';
+   parts->version[parts->version_len] = '\0';
    parts->operator[parts->operator_len] = '\0';
 
    return 0;
@@ -139,7 +145,7 @@ int main (void) {
     }
 
     // Parse JSON message into parts.
-    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0};
+    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
     }
@@ -156,11 +162,12 @@ int main (void) {
 
     // Build and send redis queries
 
-    if (-1 == write(red, send, snprintf(send, 508, "HSET taxi:%s %s \"%s %s %s %s %s\"\r\n", 
+    if (-1 == write(red, send, snprintf(send, 508, "HSET taxi:%s %s \"%s %s %s %s %s %s\"\r\n", 
                       msg_parts.taxi, msg_parts.operator,
                       msg_parts.timestamp,
                       msg_parts.lat, msg_parts.lon,
-                      msg_parts.status, msg_parts.device))) {
+                      msg_parts.status, msg_parts.device,
+		      msg_parts.version))) {
          goto err_redis_write;
     }
     if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex %s %s \"%s\"\r\n",
