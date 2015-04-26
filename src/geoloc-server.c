@@ -148,25 +148,25 @@ int main (void) {
     if (-1 == check_hash(&msg_parts))  {
       goto err_signature;
     }
-    
+
     // Check the timestamp to make sure it is not a replay of an old message 
     if (-1 == check_timestamp(&msg_parts))  {
       goto err_timestamp;
-    }       
-    
+    }
+
     // Build and send redis queries
 
-    if (-1 == write(red, send, snprintf(send, 508, "SET taxi:%s:%s \"%s %s %s %s %s\"\r\n", 
-				      msg_parts.taxi, msg_parts.operator,
-				      msg_parts.timestamp,
-				      msg_parts.lat, msg_parts.lon,
-				      msg_parts.status, msg_parts.device))) {
+    if (-1 == write(red, send, snprintf(send, 508, "HSET taxi:%s %s \"%s %s %s %s %s\"\r\n", 
+                      msg_parts.taxi, msg_parts.operator,
+                      msg_parts.timestamp,
+                      msg_parts.lat, msg_parts.lon,
+                      msg_parts.status, msg_parts.device))) {
          goto err_redis_write;
     }
     if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex %s %s \"%s\"\r\n",
-					  msg_parts.lat, msg_parts.lon,
-					  msg_parts.taxi))) {
-	goto err_redis_write;
+                      msg_parts.lat, msg_parts.lon,
+                      msg_parts.taxi))) {
+         goto err_redis_write;
     }
 
     continue;
