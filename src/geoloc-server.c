@@ -96,19 +96,23 @@ static inline int check_timestamp (struct msg_parts *parts) {
 	return 0;
 }
 
-int main (void) {
+int main (int argc, char** argv) {
+  int listening_port = 80;
+  if (argc == 2) {
+    listening_port = atoi(argv[1]);
+  }
 
   // Ignore pipe signals.
   signal(SIGPIPE, SIG_IGN);
 
   // Initiate UDP server socket.
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
-  struct sockaddr_in server = sock_hint(INADDR_ANY, 80);
+  struct sockaddr_in server = sock_hint(INADDR_ANY, listening_port);
   if (-1 == bind(sock, (struct sockaddr *)&server, sizeof(server))) {
     goto err_bind;
   }
 
-  printf("Now listening on UDP port %i...\n", 80);
+  printf("Now listening on UDP port %i...\n", listening_port);
 
   // Initiate redis client socket.
   int red = -1;
