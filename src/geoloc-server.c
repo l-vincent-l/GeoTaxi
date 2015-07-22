@@ -84,8 +84,8 @@ static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
 }
 
 static inline int check_hash (struct msg_parts *parts) {
-	//TODO
-	return 0;
+   //TODO
+   return 0;
 }
 
 static inline int check_timestamp (struct msg_parts *parts) {
@@ -95,17 +95,21 @@ static inline int check_timestamp (struct msg_parts *parts) {
         double ritenow, tstmp;
 
         t = gettimeofday(&tv, NULL);
-	ritenow = (double)tv.tv_sec;
-	tstmp = atof(parts->timestamp);
-	if (ritenow - tstmp > 120) { return -1; } // skip old messages
-	// if (tstmp > ritenow) { return -1; }       // skip messages from the future
-	return 0;
+   ritenow = (double)tv.tv_sec;
+   tstmp = atof(parts->timestamp);
+   if (ritenow - tstmp > 120) { return -1; } // skip old messages
+   // if (tstmp > ritenow) { return -1; }       // skip messages from the future
+   return 0;
 }
+
+
 
 int main (int argc, char** argv) {
   int listening_port = 80;
+  fprintf(stdout, "launched with %i arguments\n", argc);
   if (argc == 2) {
     listening_port = atoi(argv[1]);
+    fprintf(stdout, "Set listening port: %i\n", listening_port);
   }
 
   // Ignore pipe signals.
@@ -149,7 +153,8 @@ int main (int argc, char** argv) {
     }
 
     // Parse JSON message into parts.
-    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+ NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
     }
@@ -160,7 +165,7 @@ int main (int argc, char** argv) {
     }
 
     // Check the timestamp to make sure it is not a replay of an old message 
-    if (-1 == check_timestamp(&msg_parts))  {
+    if (-1 == check_timestamp(&msg_parts)) {
       goto err_timestamp;
     }
 
@@ -177,7 +182,7 @@ int main (int argc, char** argv) {
     if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex %s %s \"%s\"\r\n",
                       msg_parts.lat, msg_parts.lon,
                       msg_parts.taxi))) {
-         goto err_redis_write;
+    goto err_redis_write;
     }
 
     continue;
