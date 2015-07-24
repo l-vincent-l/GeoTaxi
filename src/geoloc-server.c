@@ -292,7 +292,7 @@ int main (int argc, char** argv) {
     }
     {
      snprintf(send, 508,
-                 "{\"id\":\"%s\",\"operator\":\"%s\",\"timestamp\":\"%s\",\"lat\": %s,\"lon\":%s}",
+                 "{\"id\":\"%s\",\"operator\":\"%s\",\"timestamp\":%s,\"lat\": %s,\"lon\":%s}",
                  msg_parts.taxi, msg_parts.operator, msg_parts.timestamp,
                  msg_parts.lat, msg_parts.lon);
      amqp_basic_properties_t props;
