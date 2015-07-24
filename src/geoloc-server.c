@@ -2,11 +2,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <amqp.h>
+#include <amqp_tcp_socket.h>
+#include <amqp_framing.h>
 #include "js0n.h"
 #include "sha1.h"
 
@@ -102,6 +106,95 @@ static inline int check_timestamp (struct msg_parts *parts) {
    return 0;
 }
 
+void die(char const *err) {
+    fprintf(stderr, "%s", err);
+    exit(1);
+}
+
+void die_on_amqp_error(amqp_rpc_reply_t x, char const *context);
+
+void connect_to_rabbit_mq(amqp_connection_state_t conn) {
+  //Declare rabbitmq exchange
+  char const *hostname;
+  int port;
+  amqp_socket_t *socket_rq;
+
+  hostname = getenv("GEOLOC_RQ_HOSTNAME");
+  if (!hostname) {
+    die("Please set the environment variable: GEOLOG_RQ_HOSTNAME");
+  }
+  port = atoi(getenv("GEOLOC_RQ_PORT"));
+  if (port == 0) {
+    die("Please set the environment variable: GEOLOG_RQ_PORT");
+  }
+  socket_rq = amqp_tcp_socket_new(conn);
+  if (!socket_rq) {
+    die("Unable to create socket");
+  }
+  if (amqp_socket_open(socket_rq, hostname, port) != AMQP_STATUS_OK) {
+    die("Unable to open socket");
+  }
+  die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, "guest", "guest"),
+                    "Logging in");
+  amqp_channel_open(conn, 1);
+  die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
+}
+
+int handle_amqp_error(amqp_rpc_reply_t x, char const *context)
+{
+  switch (x.reply_type) {
+  case AMQP_RESPONSE_NORMAL:
+    return 0;
+
+  case AMQP_RESPONSE_NONE:
+    fprintf(stderr, "%s: missing RPC reply type!\n", context);
+    return 1;
+
+  case AMQP_RESPONSE_LIBRARY_EXCEPTION:
+    fprintf(stderr, "%s: %s\n", context, amqp_error_string2(x.library_error));
+    return 2;
+
+  case AMQP_RESPONSE_SERVER_EXCEPTION:
+    switch (x.reply.id) {
+    case AMQP_CONNECTION_CLOSE_METHOD: {
+      amqp_connection_close_t *m = (amqp_connection_close_t *) x.reply.decoded;
+      fprintf(stderr, "%s: server connection error %d, message: %.*s\n",
+              context,
+              m->reply_code,
+              (int) m->reply_text.len, (char *) m->reply_text.bytes);
+      return 3;
+    }
+    case AMQP_CHANNEL_CLOSE_METHOD: {
+      amqp_channel_close_t *m = (amqp_channel_close_t *) x.reply.decoded;
+      fprintf(stderr, "%s: server channel error %d, message: %.*s\n",
+              context,
+              m->reply_code,
+              (int) m->reply_text.len, (char *) m->reply_text.bytes);
+      return 4;
+    }
+    default:
+      fprintf(stderr, "%s: unknown server error, method id 0x%08X\n",
+                 context, x.reply.id);
+      return 5;
+    }
+    break;
+  }
+
+  exit(1);
+}
+
+void reconnect_on_error(int x, char const *context, amqp_connection_state_t conn) {
+    if (x < 0) {
+        fprintf(stderr, "%s : %s\n", context, amqp_error_string2(x));
+        connect_to_rabbit_mq(conn);
+    }
+}
+
+void die_on_amqp_error(amqp_rpc_reply_t x, char const *context) {
+    if (handle_amqp_error(x, context) != 0) {
+        exit(1);
+    }
+}
 
 
 int main (int argc, char** argv) {
@@ -133,6 +226,19 @@ int main (int argc, char** argv) {
 
   // Declare additional helper.
   int n;
+
+  amqp_connection_state_t conn = amqp_new_connection();
+  connect_to_rabbit_mq(conn);
+
+  char const *exchange;
+  exchange = getenv("GEOLOC_RQ_EXCHANGE");
+  if (!exchange) {
+    die("GEOLOC_RQ_EXCHANGE environment variable has to be set");
+  }
+  amqp_exchange_declare(conn, 1, amqp_cstring_bytes(exchange),
+                         amqp_cstring_bytes("fanout"), 0, 0, amqp_empty_table);
+  die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring exchange");
+
 
   // Run forever:
   while (1) {
@@ -184,6 +290,25 @@ int main (int argc, char** argv) {
                       msg_parts.taxi))) {
     goto err_redis_write;
     }
+    {
+     snprintf(send, 508,
+                 "{\"id\":\"%s\",\"operator\":\"%s\",\"timestamp\":\"%s\",\"lat\": %s,\"lon\":%s}",
+                 msg_parts.taxi, msg_parts.operator, msg_parts.timestamp,
+                 msg_parts.lat, msg_parts.lon);
+     amqp_basic_properties_t props;
+     props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
+     props.content_type = amqp_cstring_bytes("application/json");
+     props.delivery_mode = 2; /* persistent delivery mode */
+     reconnect_on_error(amqp_basic_publish(conn,
+                                     1,
+                                     amqp_cstring_bytes(exchange),
+                                     amqp_cstring_bytes(""),
+                                     0,
+                                     0,
+                                     &props,
+                                     amqp_cstring_bytes(send)),
+                  "Publishing", conn);
+   } 
 
     continue;
 

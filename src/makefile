@@ -32,7 +32,7 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 SRC = geoloc-server.c
 
-LFLAGS=-I$(LDIR) $(LIBOBJ) -flto
+LFLAGS=-I$(LDIR) $(LIBOBJ) -flto -lrabbitmq
 
 build:
 	$(CC) -c $(LDIR)/sha1.c  -o $(ODIR)/sha1.o
