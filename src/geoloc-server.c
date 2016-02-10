@@ -179,6 +179,15 @@ int main (int argc, char** argv) {
                       msg_parts.taxi))) {
          goto err_redis_write;
     }
+    if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex_2 %s %s \"%s:%s\"\r\n",
+                      msg_parts.lat, msg_parts.lon,
+                      msg_parts.taxi, msg_parts.operator))) {
+         goto err_redis_write;
+    }
+    if (-1 == write(red, send, snprintf(send, 508, "ZADD timestamps %s \"%s:%s\"\r\n",
+                      msg_parts.timestamp, msg_parts.taxi, msg_parts.operator))) {
+         goto err_redis_write;
+    }
 
     continue;
 
