@@ -109,7 +109,7 @@ static inline int check_timestamp (struct msg_parts *parts) {
 }
 
 int main (int argc, char** argv) {
-  int listening_port = 8080;
+  int listening_port = 80;
   if (argc == 2) {
     listening_port = atoi(argv[1]);
   }
