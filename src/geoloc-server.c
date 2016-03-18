@@ -209,7 +209,7 @@ int main (int argc, char** argv) {
     red = -1;
     continue;
 
-  err_timestamp:        printf("Error checking timestamp.      Skipping stale or replayed message...\n"); FLUSH;
+  err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator); FLUSH;
     continue;
 
   err_signature:        printf("Error checking signature.      Skipping forged message...\n"); FLUSH;
