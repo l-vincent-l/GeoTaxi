@@ -16,8 +16,8 @@ endif
 endif
 endif
 
-ODIR=src/obj
-LDIR =lib
+ODIR=obj
+LDIR=lib
 
 _LIBSRC = sha1.c js0n.c
 LIBSRC = $(patsubst %,$(LDIR)/%,$(_LIBSRC))
