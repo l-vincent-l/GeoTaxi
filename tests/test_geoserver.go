@@ -31,6 +31,7 @@ func main() {
     defer func() {
         if r := recover(); r != nil {
             log.Println("Test ko return: ", r)
+            os.Exit(1)
         }
     }()
     cmd := exec.Command(os.Args[1], "8080")
