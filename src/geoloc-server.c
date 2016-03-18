@@ -10,6 +10,12 @@
 #include "js0n.h"
 #include "sha1.h"
 
+#ifdef FLUSHSTDOUT
+#define FLUSH fflush(stdout);
+#else
+#define FLUSH
+#endif
+
 struct msg_parts {
   char *operator,
        *version,
@@ -119,6 +125,7 @@ int main (int argc, char** argv) {
   }
 
   printf("Now listening on UDP port %i...\n", listening_port);
+  FLUSH;
 
   // Initiate redis client socket.
   int red = -1;
@@ -191,24 +198,24 @@ int main (int argc, char** argv) {
 
     continue;
 
-  err_bind:             printf("Error binding socket. You need to be root for ports under 1024.      Exiting...\n");
+  err_bind:             printf("Error binding socket. You need to be root for ports under 1024.      Exiting...\n"); FLUSH;
     return 1;
 
-  err_redis_connection: printf("Error connecting to database.  Skipping...\n");
+  err_redis_connection: printf("Error connecting to database.  Skipping...\n"); FLUSH;
     red = -1;
     continue;
 
-  err_redis_write:      printf("Error writing to database      Skipping...\n");
+  err_redis_write:      printf("Error writing to database      Skipping...\n"); FLUSH;
     red = -1;
     continue;
 
-  err_timestamp:        printf("Error checking timestamp.      Skipping stale or replayed message...\n");
+  err_timestamp:        printf("Error checking timestamp.      Skipping stale or replayed message...\n"); FLUSH;
     continue;
 
-  err_signature:        printf("Error checking signature.      Skipping forged message...\n");
+  err_signature:        printf("Error checking signature.      Skipping forged message...\n"); FLUSH;
     continue;
 
-  err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n");
+  err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n"); FLUSH;
     continue;
 
   }

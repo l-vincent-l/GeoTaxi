@@ -17,7 +17,7 @@ endif
 endif
 
 ODIR=obj
-LDIR =../lib
+LDIR=lib
 
 _LIBSRC = sha1.c js0n.c
 LIBSRC = $(patsubst %,$(LDIR)/%,$(_LIBSRC))
@@ -32,13 +32,31 @@ SRC = geoloc-server.c
 
 LFLAGS=-I$(LDIR) $(LIBOBJ) -flto
 
+ifeq (test,$(firstword $(MAKECMDGOALS)))
+  # use the rest as arguments for "run"
+  TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  # ...and turn them into do-nothing targets
+  $(eval $(TEST_ARGS):;@:)
+endif
+
+
 build:
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt geoloc-server.c -o geoloc-server 
+	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server 
 
 .PHONY: clean
 
 clean:
 		rm -f $(ODIR)/*.o *~ core  
+
+.PHONY: test
+
+test:
+	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
+	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
+	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT
+	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
+	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
+	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
 
