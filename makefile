@@ -50,3 +50,13 @@ build:
 clean:
 		rm -f $(ODIR)/*.o *~ core  
 
+.PHONY: test
+
+test:
+	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
+	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
+	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT
+	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
+	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
+	rm $(CURDIR)/geoloc-server-test
+
