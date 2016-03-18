@@ -54,5 +54,5 @@ func test_bad_timestamp(conn net.Conn, channel_out <-chan string) {
     "hash":"2fd4e1c67a2d28fced849ee1bb76e7391b93eb12"
 }`, time.Now().Unix() - 121)
 
-    asserts.Assert_chan(channel_out, "Error checking timestamp.      Skipping stale or replayed message...")
+    asserts.Assert_chan(channel_out, "Error checking timestamp.(neotaxi)      Skipping stale or replayed message...")
 }
