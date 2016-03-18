@@ -28,6 +28,11 @@ func catch_stdout(cmd *exec.Cmd) <-chan string{
 }
 
 func main() {
+    defer func() {
+        if r := recover(); r != nil {
+            log.Println("Test ko return: ", r)
+        }
+    }()
     cmd := exec.Command(os.Args[1], "8080")
     channel_out := catch_stdout(cmd)
 
