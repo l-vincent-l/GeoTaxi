@@ -147,9 +147,10 @@ int main (int argc, char** argv) {
 
     // Check for redis connection and try to establish, if
     // not existent yet.
+    struct sockaddr_in client;
     if (-1 == red) {
       red = socket(AF_INET, SOCK_STREAM, 0);
-      struct sockaddr_in client = sock_hint(inet_addr("1.0.0.127"), 6379);
+      client = sock_hint(inet_addr("1.0.0.127"), 6379);
       if (-1 == connect(red, (struct sockaddr *)&client, sizeof(client))) {
 	goto err_redis_connection;
       }
@@ -195,6 +196,11 @@ int main (int argc, char** argv) {
                       msg_parts.timestamp, msg_parts.taxi, msg_parts.operator))) {
          goto err_redis_write;
     }
+    if (-1 == write(red, send, snprintf(send, 508, "SADD ips:%s %d\"\r\n",
+                      msg_parts.operator, client.sin_addr.s_addr))) {
+         goto err_redis_write;
+    }
+
 
     continue;
 
