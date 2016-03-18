@@ -58,5 +58,5 @@ test:
 	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
-	rm $(CURDIR)/geoloc-server-test
+	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
 
