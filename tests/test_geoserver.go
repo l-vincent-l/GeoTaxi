@@ -62,9 +62,23 @@ func main() {
     }
     defer cmd_redis.Process.Kill()
     log.Println("redis-server started")
-    time.Sleep(1 * time.Second)
-    redis.Rediscli("DEL", "timestamps", "geoindex", "geoindex2")
 
+    cmd.Process.Kill()
+    time.Sleep(3 * time.Second)
+
+    cmd = exec.Command(os.Args[1], "8080")
+    channel_out = catch_stdout(cmd)
+
+    err = cmd.Start(); if err != nil {
+        log.Panic(err)
+    }
+    defer cmd.Process.Kill()
+
+    time.Sleep(1 * time.Second)
+    log.Printf("Return redis: %s\n",
+        redis.Rediscli("DEL", "timestamps", "geoindex", "geoindex2"))
+
+    conn, err = net.Dial("udp", "127.0.0.1:8080")
     tests.Run_test("test_msg_no_json", conn, channel_out)
     tests.Run_test("test_msg_ok", conn, channel_out)
     tests.Run_test("test_bad_timestamp", conn, channel_out)
