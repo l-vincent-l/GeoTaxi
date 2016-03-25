@@ -43,7 +43,7 @@ endif
 build:
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server 
+	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server -lhiredis
 
 .PHONY: clean
 
@@ -55,7 +55,7 @@ clean:
 test:
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT
+	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt  src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT -lhiredis
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver

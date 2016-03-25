@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <hiredis/hiredis.h>
 #include "js0n.h"
 #include "sha1.h"
 
@@ -127,34 +128,35 @@ int main (int argc, char** argv) {
   printf("Now listening on UDP port %i...\n", listening_port);
   FLUSH;
 
-  // Initiate redis client socket.
-  int red = -1;
-
   // Declare msg, send buffer and parts.
-  char msg[508], send[508];
+  char msg[508], value[508];
   struct msg_parts msg_parts;
 
   // Declare additional helper.
   int n;
 
+  redisContext *c;
+  redisReply *reply;
+  const char *hostname = "127.0.0.1";
+  struct timeval timeout = { 1, 500000 };
+  int port = 6379;
+  c = redisConnectWithTimeout(hostname, port, timeout);
+  if (c == NULL || c->err) {
+      if (c) {
+            printf("Error connecting to database: %s\n", c->errstr);
+            redisFree(c);
+        } else {
+            printf("Connection error: can't allocate redis context\n");
+        }
+        exit(1);
+  }
+
   // Run forever:
   while (1) {
-
     // Receive a message of length `n` < 508 into buffer `msg`,
     // and null-terminate the received message
     n      = recvfrom(sock, msg, 507, 0, NULL, NULL);
     msg[n] = '\0';
-
-    // Check for redis connection and try to establish, if
-    // not existent yet.
-    struct sockaddr_in client;
-    if (-1 == red) {
-      red = socket(AF_INET, SOCK_STREAM, 0);
-      client = sock_hint(inet_addr("1.0.0.127"), 6379);
-      if (-1 == connect(red, (struct sockaddr *)&client, sizeof(client))) {
-	goto err_redis_connection;
-      }
-    }
 
     // Parse JSON message into parts.
     msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -162,7 +164,7 @@ int main (int argc, char** argv) {
       goto err_json;
     }
 
-    // Check the hash to make sure the message has not been forged 
+    // Check the hash to make sure the message has not been forged
     if (-1 == check_hash(&msg_parts))  {
       goto err_signature;
     }
@@ -173,34 +175,41 @@ int main (int argc, char** argv) {
     }
 
     // Build and send redis queries
+    snprintf(value, 508, "%s %s %s %s %s %s",  msg_parts.timestamp, msg_parts.lat,
+             msg_parts.lon, msg_parts.status, msg_parts.device, msg_parts.version);
+    reply = redisCommand(c, "HSET taxi:%s %s \"%s\"", msg_parts.taxi,
+                         msg_parts.operator, value);
+    if (REDIS_REPLY_ERROR == reply->type) {
+         goto err_redis_write;
+    }
+    freeReplyObject(reply);
 
-    if (-1 == write(red, send, snprintf(send, 508, "HSET taxi:%s %s \"%s %s %s %s %s %s\"\r\n", 
-                      msg_parts.taxi, msg_parts.operator,
-                      msg_parts.timestamp,
-                      msg_parts.lat, msg_parts.lon,
-                      msg_parts.status, msg_parts.device,
-		      msg_parts.version))) {
+    reply = redisCommand(c, "GEOADD geoindex %s %s %s", msg_parts.lat, msg_parts.lon, msg_parts.taxi);
+    if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
     }
-    if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex %s %s \"%s\"\r\n",
-                      msg_parts.lat, msg_parts.lon,
-                      msg_parts.taxi))) {
-         goto err_redis_write;
-    }
-    if (-1 == write(red, send, snprintf(send, 508, "GEOADD geoindex_2 %s %s \"%s:%s\"\r\n",
-                      msg_parts.lat, msg_parts.lon,
-                      msg_parts.taxi, msg_parts.operator))) {
-         goto err_redis_write;
-    }
-    if (-1 == write(red, send, snprintf(send, 508, "ZADD timestamps %s \"%s:%s\"\r\n",
-                      msg_parts.timestamp, msg_parts.taxi, msg_parts.operator))) {
-         goto err_redis_write;
-    }
-    if (-1 == write(red, send, snprintf(send, 508, "SADD ips:%s %d\"\r\n",
-                      msg_parts.operator, client.sin_addr.s_addr))) {
-         goto err_redis_write;
-    }
+    freeReplyObject(reply);
 
+    snprintf(value, 508, "%s:%s", msg_parts.taxi, msg_parts.operator);
+    reply = redisCommand(c, "GEOADD geoindex_2 %s %s %s", msg_parts.lat, msg_parts.lon, value);
+    if (REDIS_REPLY_ERROR == reply->type) {
+         goto err_redis_write;
+    }
+    freeReplyObject(reply);
+
+    snprintf(value, 508, "%s:%s", msg_parts.taxi, msg_parts.operator);
+    reply = redisCommand(c, "ZADD timestamps %s %s", msg_parts.timestamp, value);
+    if (REDIS_REPLY_ERROR == reply->type) {
+         goto err_redis_write;
+    }
+    freeReplyObject(reply);
+
+   // reply = redisCommand(c, "SADD ips:%s %d\"\r\n",
+   //                   msg_parts.operator, client.sin_addr.s_addr);
+   // if (REDIS_REPLY_ERROR == reply->type) {
+   //      goto err_redis_write;
+   // }
+   // freeReplyObject(reply);
 
     continue;
 
@@ -208,11 +217,9 @@ int main (int argc, char** argv) {
     return 1;
 
   err_redis_connection: printf("Error connecting to database.  Skipping...\n"); FLUSH;
-    red = -1;
     continue;
 
-  err_redis_write:      printf("Error writing to database      Skipping...\n"); FLUSH;
-    red = -1;
+err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply); FLUSH;
     continue;
 
   err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator); FLUSH;

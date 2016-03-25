@@ -7,7 +7,9 @@ import (
 )
 
 func Assert_chan(c <-chan string, expected_value string) {
+    log.Println("Waiting for line")
     line := <-c
+    log.Printf("Got line %s\n", line)
     Assert(line, expected_value)
 }
 
@@ -36,5 +38,6 @@ func Assert_channel_empty(c <-chan string) {
 
 func Assert_redis(expected_value, command string, args ...string) {
     value := redis.Rediscli(command, args...)
+    log.Printf("Redis command: %s %s\n", command, strings.Join(args, ","))
     Assert(value, expected_value)
 }
