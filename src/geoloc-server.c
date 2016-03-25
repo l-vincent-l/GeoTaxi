@@ -95,6 +95,13 @@ static inline int check_hash (struct msg_parts *parts) {
 	return 0;
 }
 
+void *get_in_addr(struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 static inline int check_timestamp (struct msg_parts *parts) {
         // Declare a few helpers.
         int t;
@@ -155,7 +162,10 @@ int main (int argc, char** argv) {
   while (1) {
     // Receive a message of length `n` < 508 into buffer `msg`,
     // and null-terminate the received message
-    n      = recvfrom(sock, msg, 507, 0, NULL, NULL);
+    struct sockaddr_storage sender;
+    socklen_t sendsize = sizeof(sender);
+    bzero(&sender, sizeof(sender));
+    n      = recvfrom(sock, msg, 507, 0, (struct sockaddr*)&sender, &sendsize);
     msg[n] = '\0';
 
     // Parse JSON message into parts.
@@ -204,12 +214,16 @@ int main (int argc, char** argv) {
     }
     freeReplyObject(reply);
 
-   // reply = redisCommand(c, "SADD ips:%s %d\"\r\n",
-   //                   msg_parts.operator, client.sin_addr.s_addr);
-   // if (REDIS_REPLY_ERROR == reply->type) {
-   //      goto err_redis_write;
-   // }
-   // freeReplyObject(reply);
+    char addr_str[INET_ADDRSTRLEN];
+    snprintf(value, 508, "ips:%s", msg_parts.operator);
+    reply = redisCommand(c, "SADD %s %s", value,
+        inet_ntop(sender.ss_family, get_in_addr((struct sockaddr *)&sender),
+        addr_str, sizeof addr_str)
+    );
+    if (REDIS_REPLY_ERROR == reply->type) {
+         goto err_redis_write;
+    }
+    freeReplyObject(reply);
 
     continue;
 
