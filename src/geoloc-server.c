@@ -187,7 +187,7 @@ int main (int argc, char** argv) {
     // Build and send redis queries
     snprintf(value, 508, "%s %s %s %s %s %s",  msg_parts.timestamp, msg_parts.lat,
              msg_parts.lon, msg_parts.status, msg_parts.device, msg_parts.version);
-    reply = redisCommand(c, "HSET taxi:%s %s \"%s\"", msg_parts.taxi,
+    reply = redisCommand(c, "HSET taxi:%s %s %s", msg_parts.taxi,
                          msg_parts.operator, value);
     if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
