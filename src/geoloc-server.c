@@ -214,6 +214,12 @@ int main (int argc, char** argv) {
     }
     freeReplyObject(reply);
 
+    reply = redisCommand(c, "ZADD timestamps_id %s %s", msg_parts.timestamp, msg_parts.taxi);
+    if (REDIS_REPLY_ERROR == reply->type) {
+         goto err_redis_write;
+    }
+    freeReplyObject(reply);
+
     char addr_str[INET_ADDRSTRLEN];
     snprintf(value, 508, "ips:%s", msg_parts.operator);
     reply = redisCommand(c, "SADD %s %s", value,
@@ -227,7 +233,7 @@ int main (int argc, char** argv) {
 
     continue;
 
-  err_bind:             printf("Error binding socket. You need to be root for ports under 1024.      Exiting...\n"); FLUSH;
+err_bind:             printf("Error binding socket. You need to be root for ports under 1024. binding to: %d     Exiting...\n", listening_port); FLUSH;
     return 1;
 
   err_redis_connection: printf("Error connecting to database.  Skipping...\n"); FLUSH;
