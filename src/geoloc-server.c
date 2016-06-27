@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <hiredis/hiredis.h>
 #include "js0n.h"
@@ -157,7 +158,7 @@ int main (int argc, char** argv) {
         }
         exit(1);
   }
-
+   openlog("geotaxi", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   // Run forever:
   while (1) {
     // Receive a message of length `n` < 508 into buffer `msg`,
@@ -183,6 +184,9 @@ int main (int argc, char** argv) {
     if (-1 == check_timestamp(&msg_parts))  {
       goto err_timestamp;
     }
+
+    syslog(LOG_NOTICE, "%s", msg);
+
 
     // Build and send redis queries
     snprintf(value, 508, "%s %s %s %s %s %s",  msg_parts.timestamp, msg_parts.lat,
@@ -252,5 +256,6 @@ err_redis_write:      printf("Error writing to database : %s      Skipping...\n"
     continue;
 
   }
+  closelog();
 
 }
