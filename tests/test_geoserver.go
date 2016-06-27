@@ -55,7 +55,7 @@ func main() {
     tests.Run_test("test_no_redis_server", conn, channel_out)
 
     log.Println("Starting redis-server")
-    cmd_redis := exec.Command(os.Args[2], "--module-add", os.Args[3])
+    cmd_redis := exec.Command(os.Args[2])
     err = cmd_redis.Start(); if err != nil {
         log.Println("Unable to start redis-server")
         log.Panic(err)
