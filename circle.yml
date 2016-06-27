@@ -5,16 +5,12 @@ machine:
 
 dependencies:
     pre:
-        - if [ ! -e redis/src/redis-server ]; then wget https://github.com/mattsta/redis/archive/dynamic-redis-2.8.zip && unzip dynamic-redis-2.8.zip && rm dynamic-redis-2.8.zip && mv redis-dynamic-redis-2.8 redis && cd redis/ && make; fi
-        - if [ ! -e yajl/build/yajl-*/bin/json_reformat ]; then wget https://github.com/lloyd/yajl/archive/master.zip -O yajl.zip && unzip yajl.zip && rm yajl.zip && mv yajl-master yajl && cd yajl && ./configure && make ;fi
-        - if [ ! -e krmt/geo.so ]; then wget https://github.com/mattsta/krmt/archive/master.zip -O krmt.zip && unzip krmt.zip && mv krmt-master krmt && cd krmt && make ;fi
+        - if [ ! -e redis/src/redis-server ]; then wget  https://github.com/antirez/redis/archive/3.2.0.zip && unzip 3.2.0.zip && rm 3.2.0.zip && mv redis-3.2.0 redis && cd redis/ && make; fi
         - mkdir obj
         - sudo service redis-server stop
     cache_directories:
         - redis
-        - yajl
-        - krmt
 
 test:
     override:
-        - make test redis/src/redis-server krmt/geo.so
+        - make test redis/src/redis-server
