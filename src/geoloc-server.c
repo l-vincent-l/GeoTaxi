@@ -104,12 +104,12 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 static inline int check_timestamp (struct msg_parts *parts) {
-        // Declare a few helpers.
-        int t;
-        struct timeval tv;
-        double ritenow, tstmp;
+	// Declare a few helpers.
+	int t;
+	struct timeval tv;
+	double ritenow, tstmp;
 
-        t = gettimeofday(&tv, NULL);
+	t = gettimeofday(&tv, NULL);
 	ritenow = (double)tv.tv_sec;
 	tstmp = atof(parts->timestamp);
 	if (ritenow - tstmp > 120) { return -1; } // skip old messages
