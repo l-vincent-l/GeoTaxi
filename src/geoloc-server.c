@@ -38,7 +38,8 @@ struct msg_parts {
     timestamp_len,
     status_len,
     device_len,
-    hash_len;
+    hash_len,
+    total_len;
 };
 
 static inline struct sockaddr_in sock_hint (long addr, short port) {
@@ -52,33 +53,43 @@ static inline struct sockaddr_in sock_hint (long addr, short port) {
 
 static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
    int len=0;
+   parts->total_len = 0;
    parts->operator = js0n("operator",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->operator_len = len;
+   parts->total_len += len;
    parts->version = js0n("version",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->version_len = len;
+   parts->total_len += len;
    parts->taxi = js0n("taxi",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->taxi_len = len;
+   parts->total_len += len;
    parts->lat = js0n("lat",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->lat_len = len;
+   parts->total_len += len;
    parts->lon = js0n("lon",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->lon_len = len;
+   parts->total_len += len;
    parts->timestamp = js0n("timestamp",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->timestamp_len = len;
+   parts->total_len += len;
    parts->status = js0n("status",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->status_len = len;
+   parts->total_len += len;
    parts->device = js0n("device",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->device_len = len;
+   parts->total_len += len;
    parts->hash = js0n("hash",0,msg,n,&len);
    if (0 == len) { return -1; }
    parts->hash_len = len;
+   parts->total_len += len;
 
    parts->hash[parts->hash_len] = '\0';
    parts->device[parts->device_len] = '\0';
@@ -93,9 +104,15 @@ static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
    return 0;
 }
 
-static inline int check_hash (struct msg_parts *parts) {
-	//TODO
-	return 0;
+static inline int check_hash (struct msg_parts *parts, char* apikey) {
+    char *concatenate = malloc(parts->total_len + strlen(apikey));
+    sprintf(concatenate, "%s%s%s%s%s%s%s%s%s", 
+        parts->timestamp, parts->operator, parts->taxi,
+        parts->lat, parts->lon, parts->device, parts->status,
+        parts->version, apikey);
+    int r = strcmp(parts->hash, sha1(concatenate));
+    free(concatenate);
+    return r;
 }
 
 void *get_in_addr(struct sockaddr *sa) {
@@ -285,8 +302,27 @@ int main (int argc, char** argv) {
     }
 
     // Check the hash to make sure the message has not been forged
-    if (-1 == check_hash(&msg_parts))  {
-      goto err_signature;
+    if (0 != check_hash(&msg_parts, *apikey))  {
+        printf("Error checking signature.      Storing it in redis\n"); FLUSH;
+        reply = redisCommand(c, "ZINCRBY badhash_operators 1 %s", msg_parts.operator);
+        if (REDIS_REPLY_ERROR == reply->type) {
+             goto err_redis_write;
+        }
+        freeReplyObject(reply);
+        reply = redisCommand(c, "ZINCRBY badhash_taxis_ids 1 %s", msg_parts.taxi);
+        if (REDIS_REPLY_ERROR == reply->type) {
+             goto err_redis_write;
+        }
+        freeReplyObject(reply);
+        char addr_str_bad_hash[INET_ADDRSTRLEN];
+        reply = redisCommand(c, "ZINCRBY badhash_ips 1 %s", 
+            inet_ntop(sender.ss_family, get_in_addr((struct sockaddr *)&sender),
+            addr_str_bad_hash, sizeof addr_str_bad_hash)
+        );
+        if (REDIS_REPLY_ERROR == reply->type) {
+             goto err_redis_write;
+        }
+        freeReplyObject(reply);
     }
 
     // Check the timestamp to make sure it is not a replay of an old message 
@@ -352,8 +388,6 @@ err_redis_write:      printf("Error writing to database : %s      Skipping...\n"
   err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator); FLUSH;
     continue;
 
-  err_signature:        printf("Error checking signature.      Skipping forged message...\n"); FLUSH;
-    continue;
 
   err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n"); FLUSH;
     continue;
