@@ -1,4 +1,4 @@
-VERSION = RELEASE
+VERSION = Debug
 
 DEBUG_CFLAGS = -g -DUSE_HEAP_STATS
 PROFILE_CFLAGS = -pg
@@ -30,7 +30,9 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 SRC = geoloc-server.c
 
-LFLAGS=-I$(LDIR) $(LIBOBJ) -flto
+LFLAGS=-I$(LDIR) $(LIBOBJ) 
+
+LIBS=-flto -lgcrypt -lcurl -lhiredis
 
 ifeq (test,$(firstword $(MAKECMDGOALS)))
   # use the rest as arguments for "run"
@@ -44,7 +46,7 @@ build:
 	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt -lcurl src/geoloc-server.c -o geoloc-server -lhiredis
+	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server $(LIBS)
 
 .PHONY: clean
 
@@ -57,7 +59,7 @@ test:
 	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt  -lcurl src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT -lhiredis
+	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT $(LIBS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
