@@ -4,13 +4,25 @@ import (
     "log"
     "strings"
     "redis"
+    "time"
 )
 
 func Assert_chan(c <-chan string, expected_value string) {
     log.Println("Waiting for line")
-    line := <-c
-    log.Printf("Got line %s\n", line)
-    Assert(line, expected_value)
+    time.Sleep(1 * time.Millisecond)
+    select {
+    case line, ok := <-c:
+        if ok {
+            log.Printf("Got line %s\n", line)
+            Assert(line, expected_value)
+        } else {
+            log.Printf("Channel closed")
+            panic(1)
+        }
+    default:
+        log.Printf("No value found")
+        panic(1)
+    }
 }
 
 func Assert(value, expected_value string) {
@@ -22,6 +34,7 @@ func Assert(value, expected_value string) {
 }
 
 func Assert_channel_empty(c <-chan string) {
+    time.Sleep(1 * time.Millisecond)
     select {
     case x, ok := <-c:
         if ok {
@@ -32,6 +45,7 @@ func Assert_channel_empty(c <-chan string) {
             panic(1)
         }
     default:
+        log.Printf("No value to read")
         return
     }
 }
