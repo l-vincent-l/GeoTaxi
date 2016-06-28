@@ -1,6 +1,6 @@
 VERSION = RELEASE
 
-DEBUG_CFLAGS = -g -DUSE_HEAP_STATS
+DEBUG_CFLAGS = -g -DUSE_HEAP_STATS -DDEBUG
 PROFILE_CFLAGS = -pg
 RELEASE_CFLAGS = -O2
 
@@ -19,7 +19,7 @@ endif
 ODIR=obj
 LDIR=lib
 
-_LIBSRC = sha1.c js0n.c
+_LIBSRC = sha1.c js0n.c map.c
 LIBSRC = $(patsubst %,$(LDIR)/%,$(_LIBSRC))
 LIBHEADER = $(LIBSRC:%.c=%.h)
 _LIBOBJ = $(_LIBSRC:%.c=%.o)
@@ -30,7 +30,9 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 SRC = geoloc-server.c
 
-LFLAGS=-I$(LDIR) $(LIBOBJ) -flto
+LFLAGS=-I$(LDIR) $(LIBOBJ) 
+
+LIBS=-flto -lgcrypt -lcurl -lhiredis
 
 ifeq (test,$(firstword $(MAKECMDGOALS)))
   # use the rest as arguments for "run"
@@ -41,9 +43,10 @@ endif
 
 
 build:
+	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt src/geoloc-server.c -o geoloc-server -lhiredis
+	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server $(LIBS)
 
 .PHONY: clean
 
@@ -53,10 +56,12 @@ clean:
 .PHONY: test
 
 test:
+	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) $(CFLAGS) $(LFLAGS) -lgcrypt  src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT -lhiredis
+	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT $(LIBS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
-	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
+	GOPATH=$(PWD)/fake_apitaxi go build fake_apitaxi/main.go
+	./test_geoserver $(CURDIR)/geoloc-server-test $(CURDIR)/main $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
 

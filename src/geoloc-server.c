@@ -11,6 +11,8 @@
 #include <hiredis/hiredis.h>
 #include "js0n.h"
 #include "sha1.h"
+#include "map.h"
+#include <curl/curl.h>
 
 #ifdef FLUSHSTDOUT
 #define FLUSH fflush(stdout);
@@ -103,13 +105,95 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-static inline int check_timestamp (struct msg_parts *parts) {
-        // Declare a few helpers.
-        int t;
-        struct timeval tv;
-        double ritenow, tstmp;
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+};
 
-        t = gettimeofday(&tv, NULL);
+static size_t
+WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+  if(mem->memory == NULL) {
+    /* out of memory! */
+    printf("not enough memory (realloc returned NULL)\n");
+    return 0;
+  }
+
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+
+  return realsize;
+}
+
+static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
+    if (strcmp(http_apikey, "") == 0) {
+        printf("No apikey given\n");
+        return;
+    }
+    CURL *curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    if(curl) {
+      struct curl_slist *chunk = NULL;
+      chunk = curl_slist_append(chunk, "Accept: application/json");
+      chunk = curl_slist_append(chunk, "X-VERSION: 2");
+      char header_xapi[80];
+      sprintf(header_xapi, "X-API-KEY: %s", http_apikey);
+      chunk = curl_slist_append(chunk, header_xapi);
+      res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+      curl_easy_setopt(curl, CURLOPT_URL, url_users);
+      struct MemoryStruct data;
+      data.memory = malloc(1);  /* will be grown as needed by the realloc above */
+      data.size = 0;    /* no data at this point */
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&data);
+      res = curl_easy_perform(curl);
+      if(res != CURLE_OK)
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+      else {
+          int vlen;
+          char * array= js0n("data", 4, data.memory, data.size, &vlen);
+          int i = 0;
+          int vlen1 = 0;
+          do {
+              char *array_str = js0n(0, i, array, vlen, &vlen1);
+              if (vlen1 != 0) {
+                  char *val, *apikey, *name;
+                  int vlen2 = 0;
+                  val = js0n("apikey", 6, array_str, vlen, &vlen2);
+                  if (vlen2 == 0) { ++i;continue;}
+                  apikey = malloc(vlen2+1);
+                  strncpy(apikey, val, vlen2);
+                  apikey[vlen2] = '\0';
+
+                  val = js0n("name", 4, array_str, vlen, &vlen2);
+                  if (vlen2 == 0 || vlen2>100) { ++i;continue;}
+                  name = malloc(1);
+                  strncpy(name, val, vlen2+1);
+                  name[vlen2] = '\0';
+                  map_set(map, name, apikey);
+              }
+              ++i;
+          } while (vlen1 != 0 && i<10);
+     }
+     curl_easy_cleanup(curl);
+     curl_slist_free_all(chunk);
+   }
+}
+
+static inline int check_timestamp (struct msg_parts *parts) {
+	// Declare a few helpers.
+	int t;
+	struct timeval tv;
+	double ritenow, tstmp;
+
+	t = gettimeofday(&tv, NULL);
 	ritenow = (double)tv.tv_sec;
 	tstmp = atof(parts->timestamp);
 	if (ritenow - tstmp > 120) { return -1; } // skip old messages
@@ -119,9 +203,21 @@ static inline int check_timestamp (struct msg_parts *parts) {
 
 int main (int argc, char** argv) {
   int listening_port = 80;
-  if (argc == 2) {
+  if (argc >= 2) {
     listening_port = atoi(argv[1]);
   }
+  char* apikey = "";
+  if (argc >= 3) {
+    apikey = argv[2];
+  }
+  char* url_users = "http://127.0.0.1:5000/users";
+  if (argc == 4) {
+    url_users = argv[3];
+  }
+  map_str_t map_users;
+  map_init(&map_users);
+
+  get_users(&map_users, apikey, url_users);
 
   // Ignore pipe signals.
   signal(SIGPIPE, SIG_IGN);
