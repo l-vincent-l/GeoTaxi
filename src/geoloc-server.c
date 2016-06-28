@@ -124,8 +124,12 @@ int main (int argc, char** argv) {
   }
 
   char* apikey = "";
-  if (argc == 3) {
-    apikey = argv[3];
+  if (argc >= 3) {
+    apikey = argv[2];
+  }
+  char* url_users = "http://127.0.0.1:5000/users";
+  if (argc == 4) {
+    url_users = argv[3];
   }
   // Ignore pipe signals.
   signal(SIGPIPE, SIG_IGN);
