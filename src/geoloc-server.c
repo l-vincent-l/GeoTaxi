@@ -206,6 +206,11 @@ static inline int check_timestamp (struct msg_parts *parts) {
 	return 0;
 }
 
+char **get_apikey(char* username, map_str_t *map) {
+    return map_get(map, username);
+}
+
+
 int main (int argc, char** argv) {
   int listening_port = 80;
   if (argc >= 2) {
@@ -274,6 +279,10 @@ int main (int argc, char** argv) {
     msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
+    }
+    char **apikey = get_apikey(msg_parts.operator, &map_users);
+    if (NULL == apikey) {
+      goto err_get_user;
     }
 
     // Check the hash to make sure the message has not been forged
@@ -348,6 +357,9 @@ err_redis_write:      printf("Error writing to database : %s      Skipping...\n"
     continue;
 
   err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n"); FLUSH;
+    continue;
+
+  err_get_user:        printf("Error getting user.            Can't find %s\n", msg_parts.operator); FLUSH;
     continue;
 
   }

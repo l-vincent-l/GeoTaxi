@@ -5,6 +5,7 @@ import (
     "net"
     "fmt"
     "time"
+    "redis"
 )
 
 func test_server_started(channel_out <-chan string) {
@@ -16,6 +17,28 @@ func test_no_redis_server(conn net.Conn, channel_out <-chan string) {
     asserts.Assert_chan(channel_out, "Error connecting to database: Connection refused")
 }
 
+
+func test_msg_bad_operator(conn net.Conn, channel_out <-chan string) {
+    zcard_timestamps := redis.Rediscli("ZCARD", "timestamps")
+    zcard_geoindex := redis.Rediscli("ZCARD", "geoindex")
+    zcard_geoindex2 := redis.Rediscli("ZCARD", "geoindex_2")
+    msg := fmt.Sprintf(`{
+    "timestamp":"%d",
+    "operator":"badoperator",
+    "taxi":"9cf0ebfa-dd37-45c4-8a80-60db584535d8",
+    "lat":"2.38852053",
+    "lon":"48.84394873",
+    "device":"phone",
+    "status":"0",
+    "version":"1",
+    "hash":"2fd4e1c67a2d28fced849ee1bb76e7391b93eb12"
+}`, time.Now().Unix())
+    fmt.Fprintf(conn, msg)
+    asserts.Assert_chan(channel_out, "Error getting user.            Can't find badoperator")
+    asserts.Assert_redis(zcard_timestamps, "ZCARD", "timestamps")
+    asserts.Assert_redis(zcard_geoindex, "ZCARD", "geoindex")
+    asserts.Assert_redis(zcard_geoindex2, "ZCARD", "geoindex_2")
+}
 func test_msg_ok(conn net.Conn, channel_out <-chan string) {
     msg := fmt.Sprintf(`{
     "timestamp":"%d",

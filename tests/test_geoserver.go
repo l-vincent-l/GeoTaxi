@@ -14,7 +14,7 @@ import (
 
 
 func catch_stdout(cmd *exec.Cmd) <-chan string{
-    channel_out := make(chan string);
+    channel_out := make(chan string, 10);
     out, err := cmd.StdoutPipe(); if err != nil {
         log.Fatal(err)
     }
@@ -85,6 +85,7 @@ func main() {
     conn, err = net.Dial("udp", "127.0.0.1:8080")
     tests.Run_test("test_msg_no_json", conn, channel_out)
     tests.Run_test("test_msg_ok", conn, channel_out)
+    tests.Run_test("test_msg_bad_operator", conn, channel_out)
     tests.Run_test("test_bad_timestamp", conn, channel_out)
 
     log.Println("Tests ok")
