@@ -74,7 +74,7 @@ func main() {
     cmd.Process.Kill()
     time.Sleep(3 * time.Second)
 
-    cmd = exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
+    cmd = exec.Command(os.Args[1], args...)
     channel_out = catch_stdout(cmd)
 
     err = cmd.Start(); if err != nil {
