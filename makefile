@@ -61,6 +61,7 @@ test:
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
 	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT $(LIBS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
-	./test_geoserver $(CURDIR)/geoloc-server-test $(TEST_ARGS)
+	GOPATH=$(PWD)/fake_apitaxi go build fake_apitaxi/main.go
+	./test_geoserver $(CURDIR)/geoloc-server-test $(CURDIR)/main $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
 

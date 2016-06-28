@@ -34,9 +34,13 @@ func main() {
             os.Exit(1)
         }
     }()
-    cmd := exec.Command(os.Args[1], "8080")
-    channel_out := catch_stdout(cmd)
+    cmd_fake_api := exec.Command(os.Args[2])
+    err_fake_api := cmd_fake_api.Start(); if err_fake_api!= nil {
+        log.Panic(err_fake_api)
+    }
 
+    cmd := exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
+    channel_out := catch_stdout(cmd)
     err := cmd.Start(); if err != nil {
         log.Panic(err)
     }
@@ -55,7 +59,7 @@ func main() {
     tests.Run_test("test_no_redis_server", conn, channel_out)
 
     log.Println("Starting redis-server")
-    cmd_redis := exec.Command(os.Args[2])
+    cmd_redis := exec.Command(os.Args[3])
     err = cmd_redis.Start(); if err != nil {
         log.Println("Unable to start redis-server")
         log.Panic(err)
@@ -66,7 +70,7 @@ func main() {
     cmd.Process.Kill()
     time.Sleep(3 * time.Second)
 
-    cmd = exec.Command(os.Args[1], "8080")
+    cmd = exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
     channel_out = catch_stdout(cmd)
 
     err = cmd.Start(); if err != nil {
