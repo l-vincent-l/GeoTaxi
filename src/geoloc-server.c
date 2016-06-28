@@ -153,10 +153,12 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&data);
       res = curl_easy_perform(curl);
-      if(res != CURLE_OK)
+      if(res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
-      else {
+        fprintf(stderr, "Url: %s\n", url_users);
+        fprintf(stderr, "APIKEY: %s\n", http_apikey);
+      } else {
           int vlen;
           char * array= js0n("data", 4, data.memory, data.size, &vlen);
           int i = 0;
@@ -184,6 +186,9 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
      }
      curl_easy_cleanup(curl);
      curl_slist_free_all(chunk);
+   } else {
+     curl_easy_cleanup(curl);
+     printf("Unable to get users list from: %s", url_users);
    }
 }
 
