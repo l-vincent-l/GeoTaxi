@@ -38,8 +38,12 @@ func main() {
     err_fake_api := cmd_fake_api.Start(); if err_fake_api!= nil {
         log.Panic(err_fake_api)
     }
-
-    cmd := exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
+    defer cmd_fake_api.Process.Kill()
+    args := []string{"8080"}
+    if len(os.Args) >4 {
+        args = append(args, os.Args[4:]...)
+    }
+    cmd := exec.Command(os.Args[1], args...)
     channel_out := catch_stdout(cmd)
     err := cmd.Start(); if err != nil {
         log.Panic(err)

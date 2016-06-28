@@ -176,8 +176,8 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
 
                   val = js0n("name", 4, array_str, vlen, &vlen2);
                   if (vlen2 == 0 || vlen2>100) { ++i;continue;}
-                  name = malloc(1);
-                  strncpy(name, val, vlen2+1);
+                  name = malloc(vlen2+1);
+                  strncpy(name, val, vlen2);
                   name[vlen2] = '\0';
                   map_set(map, name, apikey);
               }
@@ -226,7 +226,6 @@ int main (int argc, char** argv) {
   }
   map_str_t map_users;
   map_init(&map_users);
-
   get_users(&map_users, apikey, url_users);
 
   // Ignore pipe signals.
