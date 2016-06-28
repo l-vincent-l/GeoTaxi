@@ -93,4 +93,5 @@ func main() {
     tests.Run_test("test_bad_timestamp", conn, channel_out)
 
     log.Println("Tests ok")
+    os.Exit(0)
 }
