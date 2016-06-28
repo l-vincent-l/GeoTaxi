@@ -38,7 +38,7 @@ ifeq (test,$(firstword $(MAKECMDGOALS)))
   # use the rest as arguments for "run"
   TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
   # ...and turn them into do-nothing targets
-  $(eval $(TEST_ARGS):;@:)
+  #$(eval $(TEST_ARGS):;@:)
 endif
 
 
