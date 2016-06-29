@@ -14,7 +14,7 @@ import (
 
 
 func catch_stdout(cmd *exec.Cmd) <-chan string{
-    channel_out := make(chan string);
+    channel_out := make(chan string, 10);
     out, err := cmd.StdoutPipe(); if err != nil {
         log.Fatal(err)
     }
@@ -38,8 +38,12 @@ func main() {
     err_fake_api := cmd_fake_api.Start(); if err_fake_api!= nil {
         log.Panic(err_fake_api)
     }
-
-    cmd := exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
+    defer cmd_fake_api.Process.Kill()
+    args := []string{"8080"}
+    if len(os.Args) >4 {
+        args = append(args, os.Args[4:]...)
+    }
+    cmd := exec.Command(os.Args[1], args...)
     channel_out := catch_stdout(cmd)
     err := cmd.Start(); if err != nil {
         log.Panic(err)
@@ -70,7 +74,7 @@ func main() {
     cmd.Process.Kill()
     time.Sleep(3 * time.Second)
 
-    cmd = exec.Command(os.Args[1], "8080", os.Args[4], os.Args[5])
+    cmd = exec.Command(os.Args[1], args...)
     channel_out = catch_stdout(cmd)
 
     err = cmd.Start(); if err != nil {
@@ -85,7 +89,9 @@ func main() {
     conn, err = net.Dial("udp", "127.0.0.1:8080")
     tests.Run_test("test_msg_no_json", conn, channel_out)
     tests.Run_test("test_msg_ok", conn, channel_out)
+    tests.Run_test("test_msg_bad_operator", conn, channel_out)
     tests.Run_test("test_bad_timestamp", conn, channel_out)
 
     log.Println("Tests ok")
+    os.Exit(0)
 }

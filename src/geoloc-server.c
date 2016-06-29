@@ -153,10 +153,12 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&data);
       res = curl_easy_perform(curl);
-      if(res != CURLE_OK)
+      if(res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
-      else {
+        fprintf(stderr, "Url: %s\n", url_users);
+        fprintf(stderr, "APIKEY: %s\n", http_apikey);
+      } else {
           int vlen;
           char * array= js0n("data", 4, data.memory, data.size, &vlen);
           int i = 0;
@@ -174,8 +176,8 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
 
                   val = js0n("name", 4, array_str, vlen, &vlen2);
                   if (vlen2 == 0 || vlen2>100) { ++i;continue;}
-                  name = malloc(1);
-                  strncpy(name, val, vlen2+1);
+                  name = malloc(vlen2+1);
+                  strncpy(name, val, vlen2);
                   name[vlen2] = '\0';
                   map_set(map, name, apikey);
               }
@@ -184,6 +186,9 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
      }
      curl_easy_cleanup(curl);
      curl_slist_free_all(chunk);
+   } else {
+     curl_easy_cleanup(curl);
+     printf("Unable to get users list from: %s", url_users);
    }
 }
 
@@ -201,6 +206,11 @@ static inline int check_timestamp (struct msg_parts *parts) {
 	return 0;
 }
 
+char **get_apikey(char* username, map_str_t *map) {
+    return map_get(map, username);
+}
+
+
 int main (int argc, char** argv) {
   int listening_port = 80;
   if (argc >= 2) {
@@ -216,7 +226,6 @@ int main (int argc, char** argv) {
   }
   map_str_t map_users;
   map_init(&map_users);
-
   get_users(&map_users, apikey, url_users);
 
   // Ignore pipe signals.
@@ -269,6 +278,10 @@ int main (int argc, char** argv) {
     msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
+    }
+    char **apikey = get_apikey(msg_parts.operator, &map_users);
+    if (NULL == apikey) {
+      goto err_get_user;
     }
 
     // Check the hash to make sure the message has not been forged
@@ -349,6 +362,9 @@ err_redis_write:      printf("Error writing to database : %s      Skipping...\n"
     continue;
 
   err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n"); FLUSH;
+    continue;
+
+  err_get_user:        printf("Error getting user.            Can't find %s\n", msg_parts.operator); FLUSH;
     continue;
 
   }

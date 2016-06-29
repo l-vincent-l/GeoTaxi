@@ -13,6 +13,7 @@ func Run_test(func_name string, params ... interface{}) {
         "test_msg_ok": test_msg_ok,
         "test_no_redis_server": test_no_redis_server,
         "test_bad_timestamp": test_bad_timestamp,
+        "test_msg_bad_operator": test_msg_bad_operator,
     }
     log.Printf("Running test: %s\n", func_name)
     utils.Call(funcs, func_name, params...)

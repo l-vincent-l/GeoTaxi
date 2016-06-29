@@ -13,4 +13,4 @@ dependencies:
 
 test:
     override:
-        - make test redis/src/redis-server fake_url fake_apikey
+        - make test redis/src/redis-server fake_apikey
