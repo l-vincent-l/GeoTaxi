@@ -199,7 +199,7 @@ static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
                   map_set(map, name, apikey);
               }
               ++i;
-          } while (vlen1 != 0 && i<10);
+          } while (vlen1 != 0 && i<10000);
      }
      curl_easy_cleanup(curl);
      curl_slist_free_all(chunk);
