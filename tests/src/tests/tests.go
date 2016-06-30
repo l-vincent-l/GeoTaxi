@@ -84,11 +84,11 @@ func test_msg_ok(conn net.Conn, channel_out <-chan string) {
     asserts.Assert_redis("1\n", "ZCARD", "geoindex_2")
 }
 
-func test_msg_no_json(conn net.Conn, channel_out <-chan string) {
-    fmt.Fprintf(conn, generate_message("", "neotaxi",
-        "9cf0ebfa-dd37-45c4-8a80-60db584535d8", "2.38852053", "48.84394873",
-        "phone", "0", "1", "", "apikey"))
+func test_starting_message(channel_out <-chan string) {
     asserts.Assert_chan(channel_out, "Now listening on UDP port 8080...")
+}
+
+func test_msg_no_json(conn net.Conn, channel_out <-chan string) {
     fmt.Fprintf(conn, "Hi UDP Server, How are you doing?")
     asserts.Assert_chan(channel_out, "Error parsing json.            Skipping incorrectly formated message...")
 }
@@ -108,3 +108,28 @@ func test_user_100(conn net.Conn, channel_out <-chan string) {
     asserts.Assert_channel_empty(channel_out)
     asserts.Assert_redis("1\n", "ZRANK", "geoindex", "taxi100")
 }
+
+
+func test_msg_bad_operator_no_auth(conn net.Conn, channel_out <-chan string) {
+    fmt.Fprintf(conn, generate_message("", "badoperator",
+        "9cf0ebfa-dd37-45c4-8a80-60db584535d8", "2.38852053", "48.84394873",
+        "phone", "0", "1", "", "apikey"))
+    asserts.Assert_channel_empty(channel_out)
+    asserts.Assert_redis("1\n", "ZCARD", "timestamps")
+    asserts.Assert_redis("1\n", "ZCARD", "geoindex")
+    asserts.Assert_redis("1\n", "ZCARD", "geoindex_2")
+}
+
+func test_bad_hash_no_auth(conn net.Conn, channel_out <-chan string) {
+    fmt.Fprintf(conn, generate_message("", "neotaxi",
+        "taxi2", "2.38852053", "48.84394873",
+        "phone", "0", "1", "badhash", "apikey"))
+    asserts.Assert_channel_empty(channel_out)
+    asserts.Assert_redis("2\n", "ZCARD", "timestamps")
+    asserts.Assert_redis("2\n", "ZCARD", "geoindex")
+    asserts.Assert_redis("2\n", "ZCARD", "geoindex_2")
+    asserts.Assert_redis("0\n", "ZCARD", "badhash_operators")
+    asserts.Assert_redis("0\n", "ZCARD", "badhash_taxis_ids")
+    asserts.Assert_redis("0\n", "ZCARD", "badhash_ips")
+}
+
