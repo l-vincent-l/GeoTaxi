@@ -84,7 +84,7 @@ func main() {
 
     time.Sleep(1 * time.Second)
     log.Printf("Return redis: %s\n",
-        redis.Rediscli("DEL", "timestamps", "geoindex", "geoindex2",
+        redis.Rediscli("DEL", "timestamps", "geoindex", "geoindex_2",
            "badhash_operators", "badhash_taxis_ids", "badhash_ips"))
 
     conn, err = net.Dial("udp", "127.0.0.1:8080")
@@ -93,6 +93,7 @@ func main() {
     tests.Run_test("test_msg_bad_operator", conn, channel_out)
     tests.Run_test("test_bad_timestamp", conn, channel_out)
     tests.Run_test("test_bad_hash", conn, channel_out)
+    tests.Run_test("test_user_100", conn, channel_out)
 
     log.Println("Tests ok")
     os.Exit(0)
