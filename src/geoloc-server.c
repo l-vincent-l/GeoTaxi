@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <stdbool.h>
 
 #include <hiredis/hiredis.h>
 #include "js0n.h"
@@ -233,9 +234,11 @@ int main (int argc, char** argv) {
   if (argc >= 2) {
     listening_port = atoi(argv[1]);
   }
+  bool authentication_activated = false;
   char* apikey = "";
   if (argc >= 3) {
     apikey = argv[2];
+    authentication_activated = true;
   }
   char* url_users = "http://127.0.0.1:5000/users";
   if (argc == 4) {
@@ -243,7 +246,8 @@ int main (int argc, char** argv) {
   }
   map_str_t map_users;
   map_init(&map_users);
-  get_users(&map_users, apikey, url_users);
+  if (authentication_activated)
+      get_users(&map_users, apikey, url_users);
 
   // Ignore pipe signals.
   signal(SIGPIPE, SIG_IGN);
@@ -296,34 +300,36 @@ int main (int argc, char** argv) {
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
     }
-    char **apikey = get_apikey(msg_parts.operator, &map_users);
-    if (NULL == apikey) {
-      goto err_get_user;
+    if (authentication_activated) {
+        char **apikey = get_apikey(msg_parts.operator, &map_users);
+        if (NULL == apikey) {
+          goto err_get_user;
+        }
+        // Check the hash to make sure the message has not been forged
+        if (0 != check_hash(&msg_parts, *apikey))  {
+            printf("Error checking signature.      Storing it in redis\n"); FLUSH;
+            reply = redisCommand(c, "ZINCRBY badhash_operators 1 %s", msg_parts.operator);
+            if (REDIS_REPLY_ERROR == reply->type) {
+                 goto err_redis_write;
+            }
+            freeReplyObject(reply);
+            reply = redisCommand(c, "ZINCRBY badhash_taxis_ids 1 %s", msg_parts.taxi);
+            if (REDIS_REPLY_ERROR == reply->type) {
+                 goto err_redis_write;
+            }
+            freeReplyObject(reply);
+            char addr_str_bad_hash[INET_ADDRSTRLEN];
+            reply = redisCommand(c, "ZINCRBY badhash_ips 1 %s", 
+                inet_ntop(sender.ss_family, get_in_addr((struct sockaddr *)&sender),
+                addr_str_bad_hash, sizeof addr_str_bad_hash)
+            );
+            if (REDIS_REPLY_ERROR == reply->type) {
+                 goto err_redis_write;
+            }
+            freeReplyObject(reply);
+        }
     }
 
-    // Check the hash to make sure the message has not been forged
-    if (0 != check_hash(&msg_parts, *apikey))  {
-        printf("Error checking signature.      Storing it in redis\n"); FLUSH;
-        reply = redisCommand(c, "ZINCRBY badhash_operators 1 %s", msg_parts.operator);
-        if (REDIS_REPLY_ERROR == reply->type) {
-             goto err_redis_write;
-        }
-        freeReplyObject(reply);
-        reply = redisCommand(c, "ZINCRBY badhash_taxis_ids 1 %s", msg_parts.taxi);
-        if (REDIS_REPLY_ERROR == reply->type) {
-             goto err_redis_write;
-        }
-        freeReplyObject(reply);
-        char addr_str_bad_hash[INET_ADDRSTRLEN];
-        reply = redisCommand(c, "ZINCRBY badhash_ips 1 %s", 
-            inet_ntop(sender.ss_family, get_in_addr((struct sockaddr *)&sender),
-            addr_str_bad_hash, sizeof addr_str_bad_hash)
-        );
-        if (REDIS_REPLY_ERROR == reply->type) {
-             goto err_redis_write;
-        }
-        freeReplyObject(reply);
-    }
 
     // Check the timestamp to make sure it is not a replay of an old message 
     if (-1 == check_timestamp(&msg_parts))  {

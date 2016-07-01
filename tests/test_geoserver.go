@@ -28,6 +28,7 @@ func catch_stdout(cmd *exec.Cmd) <-chan string{
 }
 
 func main() {
+    defer os.Exit(0)
     defer func() {
         if r := recover(); r != nil {
             log.Println("Test ko return: ", r)
@@ -88,6 +89,7 @@ func main() {
            "badhash_operators", "badhash_taxis_ids", "badhash_ips"))
 
     conn, err = net.Dial("udp", "127.0.0.1:8080")
+    tests.Run_test("test_starting_message", channel_out)
     tests.Run_test("test_msg_no_json", conn, channel_out)
     tests.Run_test("test_msg_ok", conn, channel_out)
     tests.Run_test("test_msg_bad_operator", conn, channel_out)
@@ -95,6 +97,27 @@ func main() {
     tests.Run_test("test_bad_hash", conn, channel_out)
     tests.Run_test("test_user_100", conn, channel_out)
 
+    cmd.Process.Kill()
+    cmd_fake_api.Process.Kill()
+    time.Sleep(1 * time.Second)
+
+    //Test no authentication
+    cmd = exec.Command(os.Args[1], "8080")
+    channel_out = catch_stdout(cmd)
+
+    err = cmd.Start(); if err != nil {
+        log.Panic(err)
+    }
+    defer cmd.Process.Kill()
+    time.Sleep(1 * time.Second)
+    conn, err = net.Dial("udp", "127.0.0.1:8080")
+    log.Printf("Return redis: %s\n",
+        redis.Rediscli("DEL", "timestamps", "geoindex", "geoindex_2",
+           "badhash_operators", "badhash_taxis_ids", "badhash_ips"))
+
+    tests.Run_test("test_starting_message", channel_out)
+    tests.Run_test("test_msg_bad_operator_no_auth", conn, channel_out)
+    tests.Run_test("test_bad_hash_no_auth", conn, channel_out)
+    defer cmd.Process.Kill()
     log.Println("Tests ok")
-    os.Exit(0)
 }
