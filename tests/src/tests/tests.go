@@ -100,3 +100,11 @@ func test_bad_timestamp(conn net.Conn, channel_out <-chan string) {
 
     asserts.Assert_chan(channel_out, "Error checking timestamp.(neotaxi)      Skipping stale or replayed message...")
 }
+
+func test_user_100(conn net.Conn, channel_out <-chan string) {
+    fmt.Fprintf(conn, generate_message("", "neotaxi100",
+        "taxi100", "2.38852053", "48.84394873",
+        "phone", "0", "1", "", "apikey100"))
+    asserts.Assert_channel_empty(channel_out)
+    asserts.Assert_redis("1\n", "ZRANK", "geoindex", "taxi100")
+}
