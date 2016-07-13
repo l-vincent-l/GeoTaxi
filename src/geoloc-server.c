@@ -327,6 +327,7 @@ int main (int argc, char** argv) {
                  goto err_redis_write;
             }
             freeReplyObject(reply);
+            continue;
         }
     }
 

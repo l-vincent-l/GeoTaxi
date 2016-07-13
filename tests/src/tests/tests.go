@@ -66,9 +66,9 @@ func test_bad_hash(conn net.Conn, channel_out <-chan string) {
         "taxi2", "2.38852053", "48.84394873",
         "phone", "0", "1", "badhash", "apikey"))
     asserts.Assert_chan(channel_out, "Error checking signature.      Storing it in redis")
-    asserts.Assert_redis("2\n", "ZCARD", "timestamps")
-    asserts.Assert_redis("2\n", "ZCARD", "geoindex")
-    asserts.Assert_redis("2\n", "ZCARD", "geoindex_2")
+    asserts.Assert_redis("1\n", "ZCARD", "timestamps")
+    asserts.Assert_redis("1\n", "ZCARD", "geoindex")
+    asserts.Assert_redis("1\n", "ZCARD", "geoindex_2")
     asserts.Assert_redis("1\n", "ZCARD", "badhash_operators")
     asserts.Assert_redis("1\n", "ZCARD", "badhash_taxis_ids")
     asserts.Assert_redis("1\n", "ZCARD", "badhash_ips")
