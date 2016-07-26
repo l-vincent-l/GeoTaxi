@@ -8,225 +8,23 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <stdbool.h>
+#include <curl/curl.h>
 
 #include <hiredis/hiredis.h>
 #include "js0n.h"
 #include "sha1.h"
 #include "map.h"
-#include <curl/curl.h>
+#include "msg_parts.h"
+#include "parse_msg.h"
+#include "sock_utils.h"
+#include "get_users.h"
+#include "checks.h"
 
 #ifdef FLUSHSTDOUT
 #define FLUSH fflush(stdout);
 #else
 #define FLUSH
 #endif
-
-struct msg_parts {
-  char *operator,
-       *version,
-    *taxi,
-    *lat,
-    *lon,
-    *timestamp,
-    *status,
-    *device,
-    *hash;
-  short operator_len,
-	version_len,
-    taxi_len,
-    lat_len,
-    lon_len,
-    timestamp_len,
-    status_len,
-    device_len,
-    hash_len,
-    total_len;
-};
-
-static inline struct sockaddr_in sock_hint (long addr, short port) {
-  struct sockaddr_in hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.sin_family      = AF_INET;
-  hints.sin_addr.s_addr = htonl(addr);
-  hints.sin_port        = htons(port);
-  return hints;
-}
-
-static inline int parse_msg (struct msg_parts *parts, char *msg, int n) {
-   int len=0;
-   parts->total_len = 0;
-   parts->operator = js0n("operator",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->operator_len = len;
-   parts->total_len += len;
-   parts->version = js0n("version",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->version_len = len;
-   parts->total_len += len;
-   parts->taxi = js0n("taxi",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->taxi_len = len;
-   parts->total_len += len;
-   parts->lat = js0n("lat",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->lat_len = len;
-   parts->total_len += len;
-   parts->lon = js0n("lon",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->lon_len = len;
-   parts->total_len += len;
-   parts->timestamp = js0n("timestamp",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->timestamp_len = len;
-   parts->total_len += len;
-   parts->status = js0n("status",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->status_len = len;
-   parts->total_len += len;
-   parts->device = js0n("device",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->device_len = len;
-   parts->total_len += len;
-   parts->hash = js0n("hash",0,msg,n,&len);
-   if (0 == len) { return -1; }
-   parts->hash_len = len;
-   parts->total_len += len;
-
-   parts->hash[parts->hash_len] = '\0';
-   parts->device[parts->device_len] = '\0';
-   parts->status[parts->status_len] = '\0';
-   parts->timestamp[parts->timestamp_len] = '\0';
-   parts->lon[parts->lon_len] = '\0';
-   parts->lat[parts->lat_len] = '\0';
-   parts->taxi[parts->taxi_len] = '\0';
-   parts->version[parts->version_len] = '\0';
-   parts->operator[parts->operator_len] = '\0';
-
-   return 0;
-}
-
-static inline int check_hash (struct msg_parts *parts, char* apikey) {
-    char *concatenate = malloc(parts->total_len + strlen(apikey));
-    sprintf(concatenate, "%s%s%s%s%s%s%s%s%s", 
-        parts->timestamp, parts->operator, parts->taxi,
-        parts->lat, parts->lon, parts->device, parts->status,
-        parts->version, apikey);
-    int r = strcmp(parts->hash, sha1(concatenate));
-    free(concatenate);
-    return r;
-}
-
-void *get_in_addr(struct sockaddr *sa) {
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-struct MemoryStruct {
-  char *memory;
-  size_t size;
-};
-
-static size_t
-WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
-
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
-  if(mem->memory == NULL) {
-    /* out of memory! */
-    printf("not enough memory (realloc returned NULL)\n");
-    return 0;
-  }
-
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
-
-  return realsize;
-}
-
-static void get_users(map_str_t *map, char* http_apikey, char* url_users) {
-    if (strcmp(http_apikey, "") == 0) {
-        printf("No apikey given\n");
-        return;
-    }
-    CURL *curl;
-    CURLcode res;
-    curl = curl_easy_init();
-    if(curl) {
-      struct curl_slist *chunk = NULL;
-      chunk = curl_slist_append(chunk, "Accept: application/json");
-      chunk = curl_slist_append(chunk, "X-VERSION: 2");
-      char header_xapi[80];
-      sprintf(header_xapi, "X-API-KEY: %s", http_apikey);
-      chunk = curl_slist_append(chunk, header_xapi);
-      res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-      curl_easy_setopt(curl, CURLOPT_URL, url_users);
-      struct MemoryStruct data;
-      data.memory = malloc(1);  /* will be grown as needed by the realloc above */
-      data.size = 0;    /* no data at this point */
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&data);
-      res = curl_easy_perform(curl);
-      if(res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
-        fprintf(stderr, "Url: %s\n", url_users);
-        fprintf(stderr, "APIKEY: %s\n", http_apikey);
-      } else {
-          int vlen;
-          char * array= js0n("data", 4, data.memory, data.size, &vlen);
-          int i = 0;
-          int vlen1 = 0;
-          do {
-              char *array_str = js0n(0, i, array, vlen, &vlen1);
-              if (vlen1 != 0) {
-                  char *val, *apikey, *name;
-                  int vlen2 = 0;
-                  val = js0n("apikey", 6, array_str, vlen, &vlen2);
-                  if (vlen2 == 0) { ++i;continue;}
-                  apikey = malloc(vlen2+1);
-                  strncpy(apikey, val, vlen2);
-                  apikey[vlen2] = '\0';
-
-                  val = js0n("name", 4, array_str, vlen, &vlen2);
-                  if (vlen2 == 0 || vlen2>100) { ++i;continue;}
-                  name = malloc(vlen2+1);
-                  strncpy(name, val, vlen2);
-                  name[vlen2] = '\0';
-                  map_set(map, name, apikey);
-              }
-              ++i;
-          } while (vlen1 != 0 && i<10000);
-     }
-     curl_easy_cleanup(curl);
-     curl_slist_free_all(chunk);
-   } else {
-     curl_easy_cleanup(curl);
-     printf("Unable to get users list from: %s", url_users);
-   }
-}
-
-static inline int check_timestamp (struct msg_parts *parts) {
-	// Declare a few helpers.
-	int t;
-	struct timeval tv;
-	double ritenow, tstmp;
-
-	t = gettimeofday(&tv, NULL);
-	ritenow = (double)tv.tv_sec;
-	tstmp = atof(parts->timestamp);
-	if (ritenow - tstmp > 120) { return -1; } // skip old messages
-	// if (tstmp > ritenow) { return -1; }       // skip messages from the future
-	return 0;
-}
-
-char **get_apikey(char* username, map_str_t *map) {
-    return map_get(map, username);
-}
 
 
 int main (int argc, char** argv) {
