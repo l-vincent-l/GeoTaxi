@@ -60,6 +60,7 @@ test:
 	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
 	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
 	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
+	$(CC) -c $(LDIR)/argtable3.c -o $(ODIR)/argtable3.o
 	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT $(LIBS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	GOPATH=$(PWD)/fake_apitaxi go build fake_apitaxi/main.go
