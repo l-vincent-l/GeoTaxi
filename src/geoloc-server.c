@@ -19,6 +19,7 @@
 #include "sock_utils.h"
 #include "get_users.h"
 #include "checks.h"
+#include "argtable3.h"
 
 #ifdef FLUSHSTDOUT
 #define FLUSH fflush(stdout);
@@ -28,19 +29,52 @@
 
 
 int main (int argc, char** argv) {
+    struct arg_lit *help;
+    struct arg_int *port_arg, *redis_port_arg;
+    struct arg_str *apikey_arg, *url_users_arg, *redis_url_arg;
+    struct arg_end *end;
+    void *argtable[] = {
+        help           = arg_lit0("h", "help", "Show help"),
+        port_arg       = arg_int0("p", "port", "<port>", "Listening port"),
+        apikey_arg     = arg_str0(NULL, "apikey", "<apikey>", "Admin apikey to retrieve users"),
+        url_users_arg  = arg_str0(NULL, "url", "<url>", "URL to retrieve users"),
+        redis_port_arg = arg_int0(NULL, "redisport", "<redis_port>", "Redis port"),
+        redis_url_arg  = arg_str0(NULL, "redisurl", "<redis_url>", "Redis url"),
+        end         = arg_end(20),
+    };
+  int nerrors;
+  nerrors = arg_parse(argc,argv,argtable);
+  if (help->count > 0) {
+        printf("Usage: geotaxi\n");
+        arg_print_syntax(stdout, argtable, "\n");
+        printf("Listen to taxi positions and send it to redis.\n\n");
+        arg_print_glossary(stdout, argtable, "  %-25s %s\n");
+        arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
+        return 0;
+  }
+  if (nerrors > 0) {
+        /* Display the error details contained in the arg_end struct.*/
+        arg_print_errors(stdout, end, "geotaxi");
+        printf("Try 'geotaxi --help' for more information.\n");
+        arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
+        return 1;
+  }
+
   int listening_port = 80;
-  if (argc >= 2) {
-    listening_port = atoi(argv[1]);
+  if (port_arg->count == 1) {
+    listening_port = *(port_arg->ival);
   }
   bool authentication_activated = false;
   char* apikey = "";
-  if (argc >= 3) {
-    apikey = argv[2];
+  if (apikey_arg->count == 1) {
+    apikey = malloc(strlen(apikey_arg->sval[0]));
+    sprintf(apikey, "%s", apikey_arg->sval[0]);
     authentication_activated = true;
   }
   char* url_users = "http://127.0.0.1:5000/users";
-  if (argc == 4) {
-    url_users = argv[3];
+  if (url_users_arg->count == 1) {
+    url_users = malloc(strlen(url_users_arg->sval[0]));
+    sprintf(url_users, "%s", url_users_arg->sval[0]);
   }
   map_str_t map_users;
   map_init(&map_users);
@@ -69,10 +103,17 @@ int main (int argc, char** argv) {
 
   redisContext *c;
   redisReply *reply;
-  const char *hostname = "127.0.0.1";
+  char *hostname = "127.0.0.1";
+  if (redis_url_arg->count == 1) {
+      hostname = malloc(strlen(redis_url_arg->sval[0]));
+      sprintf(hostname, "%s", redis_url_arg->sval[0]);
+  }
   struct timeval timeout = { 1, 500000 };
-  int port = 6379;
-  c = redisConnectWithTimeout(hostname, port, timeout);
+  int redis_port = 6379;
+  if (redis_port_arg->count == 1) {
+      redis_port = *(redis_port_arg->ival);
+  }
+  c = redisConnectWithTimeout(hostname, redis_port, timeout);
   if (c == NULL || c->err) {
       if (c) {
             printf("Error connecting to database: %s\n", c->errstr);
