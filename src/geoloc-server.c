@@ -67,11 +67,13 @@ int main (int argc, char** argv) {
   bool authentication_activated = false;
   char* apikey = "";
   if (apikey_arg->count == 1) {
+    apikey = malloc(strlen(apikey_arg->sval[0]));
     sprintf(apikey, "%s", apikey_arg->sval[0]);
     authentication_activated = true;
   }
   char* url_users = "http://127.0.0.1:5000/users";
   if (url_users_arg->count == 1) {
+    url_users = malloc(strlen(url_users_arg->sval[0]));
     sprintf(url_users, "%s", url_users_arg->sval[0]);
   }
   map_str_t map_users;
@@ -103,6 +105,7 @@ int main (int argc, char** argv) {
   redisReply *reply;
   char *hostname = "127.0.0.1";
   if (redis_url_arg->count == 1) {
+      hostname = malloc(strlen(redis_url_arg->sval[0]));
       sprintf(hostname, "%s", redis_url_arg->sval[0]);
   }
   struct timeval timeout = { 1, 500000 };
