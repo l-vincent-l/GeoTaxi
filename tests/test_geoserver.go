@@ -40,9 +40,9 @@ func main() {
         log.Panic(err_fake_api)
     }
     defer cmd_fake_api.Process.Kill()
-    args := []string{"8080"}
+    args := []string{"--port", "8080"}
     if len(os.Args) >4 {
-        args = append(args, os.Args[4:]...)
+        args = append(args, "--apikey", os.Args[4])
     }
     cmd := exec.Command(os.Args[1], args...)
     channel_out := catch_stdout(cmd)
@@ -102,7 +102,7 @@ func main() {
     time.Sleep(1 * time.Second)
 
     //Test no authentication
-    cmd = exec.Command(os.Args[1], "8080")
+    cmd = exec.Command(os.Args[1], "--port", "8080")
     channel_out = catch_stdout(cmd)
 
     err = cmd.Start(); if err != nil {
