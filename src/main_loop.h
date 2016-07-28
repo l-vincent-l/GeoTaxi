@@ -1,15 +1,26 @@
+#include<arpa/inet.h>
+#include<sys/socket.h>
+#include <time.h>
 #include "flush.h"
+#include "fluentd.h"
 
 int main_loop(redisContext *c, bool authentication_activated,
-              map_str_t *map_users, int sock, int listening_port) {
+              map_str_t *map_users, int sock, int listening_port,
+              char* fluentd_ip, int fluentd_port) {
   redisReply *reply;
 
   // Declare msg, send buffer and parts.
   char msg[508], value[508];
   struct msg_parts msg_parts;
   // Declare additional helper.
-  int n;
-  openlog("geotaxi", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  struct sockaddr_in si_fluentd;
+  memset((char *) &si_fluentd, 0, sizeof(si_fluentd));
+  si_fluentd.sin_family = AF_INET;
+  si_fluentd.sin_port = htons(fluentd_port);
+  int n, slen=sizeof(si_fluentd), nb_connection_attempts=0,
+      last_connection_attempt=(int)time(NULL);
+  int s = connect_fluentd(fluentd_ip, fluentd_port, &si_fluentd,
+          &nb_connection_attempts, &last_connection_attempt);
   // Run forever:
   while (1) {
     // Receive a message of length `n` < 508 into buffer `msg`,
@@ -63,8 +74,8 @@ int main_loop(redisContext *c, bool authentication_activated,
       goto err_timestamp;
     }
 
-    syslog(LOG_NOTICE, "%s", msg);
-
+    send_msg_fluentd(msg, &s, &si_fluentd, fluentd_ip, fluentd_port, slen,
+            &nb_connection_attempts, &last_connection_attempt);
 
     // Build and send redis queries
     snprintf(value, 508, "%s %s %s %s %s %s",  msg_parts.timestamp, msg_parts.lat,
@@ -133,5 +144,4 @@ err_redis_write:      printf("Error writing to database : %s      Skipping...\n"
     continue;
 
   }
-  closelog();
 }
