@@ -27,8 +27,8 @@
 
 int main (int argc, char** argv) {
     struct arg_lit *help;
-    struct arg_int *port_arg, *redis_port_arg;
-    struct arg_str *apikey_arg, *url_users_arg, *redis_url_arg;
+    struct arg_int *port_arg, *redis_port_arg, *fluentd_port_arg;
+    struct arg_str *apikey_arg, *url_users_arg, *redis_url_arg, *fluentd_ip_arg;
     struct arg_end *end;
     void *argtable[] = {
         help           = arg_lit0("h", "help", "Show help"),
@@ -37,6 +37,8 @@ int main (int argc, char** argv) {
         url_users_arg  = arg_str0(NULL, "url", "<url>", "URL to retrieve users"),
         redis_port_arg = arg_int0(NULL, "redisport", "<redis_port>", "Redis port"),
         redis_url_arg  = arg_str0(NULL, "redisurl", "<redis_url>", "Redis url"),
+        fluentd_port_arg = arg_int0(NULL, "fluentdport", "<fluentd_port>", "fluentd port"),
+        fluentd_ip_arg  = arg_str0(NULL, "fluentdip", "<fluentd_ip>", "fluentd url"),
         end         = arg_end(20),
     };
   int nerrors;
@@ -72,6 +74,15 @@ int main (int argc, char** argv) {
   if (url_users_arg->count == 1) {
     url_users = malloc(strlen(url_users_arg->sval[0]));
     sprintf(url_users, "%s", url_users_arg->sval[0]);
+  }
+  int fluend_port = -1;
+  if (fluentd_port_arg->count == 1) {
+      fluend_port = *(fluentd_port_arg->ival);
+  }
+  char* fluend_ip = "";
+  if (fluentd_ip_arg->count == 1) {
+      fluend_ip = malloc(strlen(fluentd_ip_arg->sval[0]));
+      sprintf(fluend_ip, "%s", fluentd_ip_arg->sval[0]);
   }
   map_str_t map_users;
   map_init(&map_users);
@@ -113,7 +124,8 @@ int main (int argc, char** argv) {
         }
         exit(1);
   }
-  return main_loop(c, authentication_activated, &map_users, sock, listening_port);
+  return main_loop(c, authentication_activated, &map_users, sock,
+          listening_port, fluend_ip, fluend_port);
 
   err_bind:             printf("Error binding socket. You need to be root for ports under 1024. binding to: %d     Exiting...\n", listening_port); FLUSH;
     return 1;
