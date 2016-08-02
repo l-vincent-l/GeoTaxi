@@ -10,7 +10,7 @@ int main_loop(redisContext *c, bool authentication_activated,
   redisReply *reply;
 
   // Declare msg, send buffer and parts.
-  char msg[508], value[508];
+  char msg[508], value[508], copy_msg[508];
   struct msg_parts msg_parts;
   // Declare additional helper.
   struct sockaddr_in si_fluentd;
@@ -30,6 +30,8 @@ int main_loop(redisContext *c, bool authentication_activated,
     bzero(&sender, sizeof(sender));
     n      = recvfrom(sock, msg, 507, 0, (struct sockaddr*)&sender, &sendsize);
     msg[n] = '\0';
+    memset(copy_msg, '\0', n);
+    strcpy(copy_msg, msg);
 
     // Parse JSON message into parts.
     msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -74,7 +76,7 @@ int main_loop(redisContext *c, bool authentication_activated,
       goto err_timestamp;
     }
 
-    send_msg_fluentd(msg, &s, &si_fluentd, fluentd_ip, fluentd_port, slen,
+    send_msg_fluentd(copy_msg, &s, &si_fluentd, fluentd_ip, fluentd_port, slen,
             &nb_connection_attempts, &last_connection_attempt);
 
     // Build and send redis queries
