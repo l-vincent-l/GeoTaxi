@@ -31,7 +31,7 @@ int connect_fluentd(char* fluentd_ip, int fluentd_port,
 void send_msg_fluentd(char* msg, int *s, struct sockaddr_in* si_fluentd,
         char* fluentd_ip, int fluentd_port, int slen,
         int *nb_connection_attempts, int* last_connection_attempt) {
-    if (s < 0) {
+    if (*s < 0) {
         *s = connect_fluentd(fluentd_ip, fluentd_port, si_fluentd,
                 nb_connection_attempts, last_connection_attempt);
         return;
