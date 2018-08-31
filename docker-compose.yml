@@ -1,0 +1,12 @@
+version: '3'
+services:
+    redis:
+        container_name: redis
+        image: redis:4.0.5
+        ports: ["6379"]
+    geotaxi:
+        image: geotaxi:latest
+        container_name: geotaxi
+        ports: ["8080"]
+        depends_on:
+            - "redis"
