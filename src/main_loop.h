@@ -1,7 +1,6 @@
 #include<arpa/inet.h>
 #include<sys/socket.h>
 #include <time.h>
-#include "flush.h"
 #include "fluentd.h"
 
 int main_loop(redisContext *c, bool authentication_activated,
@@ -46,7 +45,7 @@ int main_loop(redisContext *c, bool authentication_activated,
         }
         // Check the hash to make sure the message has not been forged
         if (0 != check_hash(&msg_parts, *apikey))  {
-            printf("Error checking signature.      Storing it in redis\n"); FLUSH;
+            printf("Error checking signature.      Storing it in redis\n");
             reply = redisCommand(c, "ZINCRBY badhash_operators 1 %s", msg_parts.operator);
             if (REDIS_REPLY_ERROR == reply->type) {
                  goto err_redis_write;
@@ -129,20 +128,20 @@ int main_loop(redisContext *c, bool authentication_activated,
     continue;
 
 
-  err_redis_connection: printf("Error connecting to database.  Skipping...\n"); FLUSH;
+  err_redis_connection: printf("Error connecting to database.  Skipping...\n");
     continue;
 
-err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply); FLUSH;
+err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply);
     continue;
 
-  err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator); FLUSH;
+  err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator);
     continue;
 
 
-  err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n"); FLUSH;
+  err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n");
     continue;
 
-  err_get_user:        printf("Error getting user.            Can't find %s\n", msg_parts.operator); FLUSH;
+  err_get_user:        printf("Error getting user.            Can't find %s\n", msg_parts.operator);
     continue;
 
   }

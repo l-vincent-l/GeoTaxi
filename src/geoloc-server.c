@@ -22,10 +22,12 @@
 #include "get_users.h"
 #include "checks.h"
 #include "main_loop.h"
-#include "flush.h"
 
 
 int main (int argc, char** argv) {
+#if defined(FLUSHSTDOUT)
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif
     struct arg_lit *help;
     struct arg_int *port_arg, *redis_port_arg, *fluentd_port_arg;
     struct arg_str *apikey_arg, *url_users_arg, *redis_url_arg, *fluentd_ip_arg;
@@ -100,7 +102,6 @@ int main (int argc, char** argv) {
   }
 
   printf("Now listening on UDP port %i...\n", listening_port);
-  FLUSH;
 
   redisContext *c;
   redisReply *reply;
@@ -127,6 +128,6 @@ int main (int argc, char** argv) {
   return main_loop(c, authentication_activated, &map_users, sock,
           listening_port, fluend_ip, fluend_port);
 
-  err_bind:             printf("Error binding socket. You need to be root for ports under 1024. binding to: %d     Exiting...\n", listening_port); FLUSH;
+  err_bind:             printf("Error binding socket. You need to be root for ports under 1024. binding to: %d     Exiting...\n", listening_port);
     return 1;
 }
