@@ -16,6 +16,7 @@ jobs:
                     make distclean
                     make
                     make install
+            - run: mkdir obj
             - run: make test redis-server fake_apikey
 workflows:
   version: 2
