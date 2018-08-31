@@ -10,3 +10,4 @@ services:
         ports: ["8080"]
         depends_on:
             - "redis"
+        command: "./wait-for-it.sh redis:6379 -- ./geoloc-server -p 8080 --redisurl redis"
