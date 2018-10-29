@@ -88,14 +88,14 @@ int main_loop(redisContext *c, bool authentication_activated,
     }
     freeReplyObject(reply);
 
-    reply = redisCommand(c, "GEOADD geoindex %s %s %s", msg_parts.lat, msg_parts.lon, msg_parts.taxi);
+    reply = redisCommand(c, "GEOADD geoindex %s %s %s", msg_parts.lon, msg_parts.lat, msg_parts.taxi);
     if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
     }
     freeReplyObject(reply);
 
     snprintf(value, 508, "%s:%s", msg_parts.taxi, msg_parts.operator);
-    reply = redisCommand(c, "GEOADD geoindex_2 %s %s %s", msg_parts.lat, msg_parts.lon, value);
+    reply = redisCommand(c, "GEOADD geoindex_2 %s %s %s", msg_parts.lon, msg_parts.lat, value);
     if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
     }
