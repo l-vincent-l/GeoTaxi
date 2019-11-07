@@ -4,6 +4,8 @@ jobs:
     docker:
       - image: openmaraude/geotaxi:latest
     steps:
+      # git is requirement for "checkout"
+      - run: apt-get update && apt-get install -y git
       - checkout
       - run: apt-get install wget golang-go -y
       - run:
