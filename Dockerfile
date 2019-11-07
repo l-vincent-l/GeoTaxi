@@ -6,7 +6,7 @@ RUN apt-get install -y autoconf-archive automake-1.14 autoconf2.59 build-essenti
 RUN mkdir /geotaxi/
 WORKDIR /geotaxi/
 
-COPY makefile .
+COPY Makefile .
 COPY lib/ lib
 COPY src/ src
 COPY wait-for-it.sh wait-for-it.sh
