@@ -1,23 +1,24 @@
 version: 2
 jobs:
-    build:
-        docker:
-            - image: openmaraude/geotaxi:latest
-        steps:
-            - checkout
-            - run: apt-get install wget golang-go -y
-            - run:
-                name: Install redis
-                command: |
-                    cd /tmp/
-                    wget http://download.redis.io/releases/redis-4.0.1.tar.gz
-                    tar xzf redis-4.0.1.tar.gz
-                    cd redis-4.0.1
-                    make distclean
-                    make
-                    make install
-            - run: mkdir obj
-            - run: make test redis-server fake_apikey
+  build:
+    docker:
+      - image: openmaraude/geotaxi:latest
+    steps:
+      - checkout
+      - run: apt-get install wget golang-go -y
+      - run:
+          name: Install redis
+          command: |
+            cd /tmp/
+            wget http://download.redis.io/releases/redis-4.0.1.tar.gz
+            tar xzf redis-4.0.1.tar.gz
+            cd redis-4.0.1
+            make distclean
+            make
+            make install
+      - run: mkdir obj
+      - run: make test redis-server fake_apikey
+
 workflows:
   version: 2
   test:
