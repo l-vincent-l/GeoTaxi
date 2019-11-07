@@ -1,69 +1,52 @@
-VERSION = RELEASE
+NAME = geoloc-server
+NAME_TEST = $(NAME)-test
 
-DEBUG_CFLAGS = -g -DUSE_HEAP_STATS -DDEBUG
-PROFILE_CFLAGS = -pg
-RELEASE_CFLAGS = -O2
+VERSION ?= RELEASE
 
 ifeq "$(VERSION)" "PROFILE"
-	CFLAGS = $(PROFILE_CFLAGS)
-else
-	ifeq "$(VERSION)" "DEBUG"
-	CFLAGS = $(DEBUG_CFLAGS)
-else
-	ifeq "$(VERSION)" "RELEASE"
-	CFLAGS = $(RELEASE_CFLAGS)
+	CFLAGS += -pg
 endif
+ifeq "$(VERSION)" "DEBUG"
+	CFLAGS += -g -DUSE_HEAP_STATS -DDEBUG
 endif
+ifeq "$(VERSION)" "RELEASE"
+	CFLAGS += -O2
 endif
 
-ODIR=obj
-LDIR=lib
+SRC = lib/argtable3.c \
+	lib/sha1.c \
+	lib/js0n.c \
+	lib/map.c \
+	src/geoloc-server.c
 
-_LIBSRC = sha1.c js0n.c map.c argtable3.c
-LIBSRC = $(patsubst %,$(LDIR)/%,$(_LIBSRC))
-LIBHEADER = $(LIBSRC:%.c=%.h)
-_LIBOBJ = $(_LIBSRC:%.c=%.o)
-LIBOBJ = $(patsubst %,$(ODIR)/%,$(_LIBOBJ))
+OBJ = $(SRC:.c=.o)
 
-_OBJ = geoloc-server.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-
-SRC = geoloc-server.c
-
-LFLAGS=-I$(LDIR) $(LIBOBJ) 
-
-LIBS=-flto -lgcrypt -lcurl -lhiredis
-
-ifeq (test,$(firstword $(MAKECMDGOALS)))
-  # use the rest as arguments for "run"
-  TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
-  # ...and turn them into do-nothing targets
-  $(eval $(TEST_ARGS):;@:)
+CFLAGS += -Ilib
+ifeq (test, $(firstword $(MAKECMDGOALS))) # if make test
+	CFLAGS += -DFLUSHSTDOUT
 endif
 
+LDFLAGS += -flto -lgcrypt -lcurl -lhiredis
 
-build:
-	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
-	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
-	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) -c $(LDIR)/argtable3.c -o $(ODIR)/argtable3.o
-	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server $(LIBS)
+$(NAME): $(OBJ)
+	$(CC) -o $(NAME) $(OBJ) $(LDFLAGS)
 
 .PHONY: clean
-
 clean:
-		rm -f $(ODIR)/*.o *~ core  
+	rm -f $(OBJ)
+
+# If run make test arg1 arg2 arg3, make TEST_ARGS = arg1 arg2 arg3
+ifeq (test,$(firstword $(MAKECMDGOALS)))
+	# use the rest as arguments for "run"
+	TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+	# ...and turn them into do-nothing targets
+	$(eval $(TEST_ARGS):;@:)
+endif
 
 .PHONY: test
-
-test:
-	$(CC) -c $(LDIR)/map.c -o $(ODIR)/map.o
-	$(CC) -c $(LDIR)/sha1.c -lgcrypt -o $(ODIR)/sha1.o
-	$(CC) -c $(LDIR)/js0n.c -o $(ODIR)/js0n.o
-	$(CC) -c $(LDIR)/argtable3.c -o $(ODIR)/argtable3.o
-	$(CC) $(CFLAGS) $(LFLAGS) src/geoloc-server.c -o geoloc-server-test -DFLUSHSTDOUT $(LIBS)
+test: $(OBJ)
+	$(CC) -o $(NAME_TEST) $(OBJ) $(LDFLAGS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	GOPATH=$(PWD)/fake_apitaxi go build fake_apitaxi/main.go
-	./test_geoserver $(CURDIR)/geoloc-server-test $(CURDIR)/main $(TEST_ARGS)
+	./test_geoserver $(CURDIR)/$(NAME) $(CURDIR)/main $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
-
