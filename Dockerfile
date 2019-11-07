@@ -16,5 +16,5 @@ RUN chmod +x wait-for-it.sh
 RUN mkdir obj
 RUN make
 
-EXPOSE 8080
+EXPOSE 8080/udp
 CMD ["./geoloc-server", "-p", "8080"]
