@@ -1,20 +1,21 @@
-FROM debian:jessie
+FROM debian:stretch
 
-RUN apt-get update
-RUN apt-get install -y autoconf-archive automake-1.14 autoconf2.59 build-essential check libspatialindex-dev libhiredis-dev libgcrypt11-dev libcurl4-openssl-dev
+RUN apt-get update && apt-get install -y \
+    autoconf-archive \
+    automake \
+    autoconf \
+    build-essential \
+    check \
+    libspatialindex-dev \
+    libhiredis-dev \
+    libgcrypt11-dev \
+    libcurl4-openssl-dev \
+    wait-for-it
 
-RUN mkdir /geotaxi/
+COPY . /geotaxi
 WORKDIR /geotaxi/
 
-COPY makefile .
-COPY lib/ lib
-COPY src/ src
-COPY wait-for-it.sh wait-for-it.sh
-
-RUN chmod +x wait-for-it.sh
-
-RUN mkdir obj
 RUN make
 
-EXPOSE 8080
+EXPOSE 8080/udp
 CMD ["./geoloc-server", "-p", "8080"]
