@@ -37,10 +37,10 @@ clean:
 
 # If run make test arg1 arg2 arg3, make TEST_ARGS = arg1 arg2 arg3
 ifeq (test,$(firstword $(MAKECMDGOALS)))
-	# use the rest as arguments for "run"
-	TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
-	# ...and turn them into do-nothing targets
-	$(eval $(TEST_ARGS):;@:)
+# use the rest as arguments for "run"
+TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+# ...and turn them into do-nothing targets
+$(eval $(TEST_ARGS):;@:)
 endif
 
 .PHONY: test
@@ -48,5 +48,5 @@ test: $(OBJ)
 	$(CC) -o $(NAME_TEST) $(OBJ) $(LDFLAGS)
 	GOPATH=$(PWD)/tests go build tests/test_geoserver.go
 	GOPATH=$(PWD)/fake_apitaxi go build fake_apitaxi/main.go
-	./test_geoserver $(CURDIR)/$(NAME) $(CURDIR)/main $(TEST_ARGS)
+	./test_geoserver $(CURDIR)/geoloc-server-test $(CURDIR)/main $(TEST_ARGS)
 	rm $(CURDIR)/geoloc-server-test $(CURDIR)/test_geoserver
