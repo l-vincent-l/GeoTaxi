@@ -9,7 +9,7 @@ struct fluentd {
 
 };
 
-int fluentd_init(struct fluentd *fluentd, const char *ip, int port);
+int fluentd_init(struct fluentd *fluentd, const char *addr, int port);
 int fluentd_sendmsg(struct fluentd *fluentd, const char *msg);
 
 #endif
