@@ -81,11 +81,12 @@ int main (int argc, char** argv) {
   if (fluentd_port_arg->count == 1) {
       fluentd_port = *(fluentd_port_arg->ival);
   }
-  char* fluentd_ip = "";
+  char* fluentd_ip = NULL;
   if (fluentd_ip_arg->count == 1) {
       fluentd_ip = malloc(strlen(fluentd_ip_arg->sval[0]));
       sprintf(fluentd_ip, "%s", fluentd_ip_arg->sval[0]);
   }
+
   map_str_t map_users;
   map_init(&map_users);
   if (authentication_activated)

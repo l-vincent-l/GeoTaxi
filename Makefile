@@ -17,7 +17,8 @@ SRC = lib/argtable3.c \
 	lib/sha1.c \
 	lib/js0n.c \
 	lib/map.c \
-	src/geoloc-server.c
+	src/geoloc-server.c \
+	src/fluentd.c
 
 OBJ = $(SRC:.c=.o)
 
