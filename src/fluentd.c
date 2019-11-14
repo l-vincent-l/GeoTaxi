@@ -18,6 +18,7 @@ fluentd_init(struct fluentd *fluentd, const char *addr, int port)
     }
 
     memset(fluentd, 0, sizeof(*fluentd));
+    fluentd->sock = -1;
 
     if (!(host = gethostbyname(addr))) {
         fprintf(stderr, "fluentd_init: unable to gethostbyname '%s'\n", addr);
@@ -40,6 +41,10 @@ int
 fluentd_sendmsg(struct fluentd *fluentd, const char *msg)
 {
     int ret;
+
+    if (fluentd->sock < 0) {
+        return -1;
+    }
 
     ret = sendto(
         fluentd->sock, msg, strlen(msg), 0,
