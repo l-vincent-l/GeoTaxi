@@ -77,15 +77,16 @@ int main (int argc, char** argv) {
     url_users = malloc(strlen(url_users_arg->sval[0]));
     sprintf(url_users, "%s", url_users_arg->sval[0]);
   }
-  int fluend_port = -1;
+  int fluentd_port = -1;
   if (fluentd_port_arg->count == 1) {
-      fluend_port = *(fluentd_port_arg->ival);
+      fluentd_port = *(fluentd_port_arg->ival);
   }
-  char* fluend_ip = "";
+  char* fluentd_ip = NULL;
   if (fluentd_ip_arg->count == 1) {
-      fluend_ip = malloc(strlen(fluentd_ip_arg->sval[0]));
-      sprintf(fluend_ip, "%s", fluentd_ip_arg->sval[0]);
+      fluentd_ip = malloc(strlen(fluentd_ip_arg->sval[0]));
+      sprintf(fluentd_ip, "%s", fluentd_ip_arg->sval[0]);
   }
+
   map_str_t map_users;
   map_init(&map_users);
   if (authentication_activated)
@@ -126,7 +127,7 @@ int main (int argc, char** argv) {
         exit(1);
   }
   return main_loop(c, authentication_activated, &map_users, sock,
-          listening_port, fluend_ip, fluend_port);
+          listening_port, fluentd_ip, fluentd_port);
 
   err_bind:             printf("Error binding socket. You need to be root for ports under 1024. binding to: %d     Exiting...\n", listening_port);
     return 1;
