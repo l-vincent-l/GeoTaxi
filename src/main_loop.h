@@ -11,8 +11,10 @@ int main_loop(redisContext *c, bool authentication_activated,
   int n;
 
   // Declare msg, send buffer and parts.
-  char msg[508], value[508], copy_msg[508];
+  char msg[508], value[508], copy_msg[508], rite_now[30];
   struct msg_parts msg_parts;
+  int t;
+  struct timeval tv;
 
   struct fluentd fluentd;
 
@@ -36,6 +38,14 @@ int main_loop(redisContext *c, bool authentication_activated,
     if (-1 == parse_msg(&msg_parts, msg, n)) {
       goto err_json;
     }
+
+    // We use the timestamp of the server to know if a taxi is up-to-date or not
+    // because if the sent timestamp is wrong it's because the client time is wrong
+    // not because there's a big lag. so we prefer to store this
+    // We also store the sent timestamp in the HSET of the taxi
+    t = gettimeofday(&tv, NULL);
+    snprintf(rite_now, 30, "%f", (double)tv.tv_sec);
+
     if (authentication_activated) {
         char **apikey = get_apikey(msg_parts.operator, map_users);
         if (NULL == apikey) {
@@ -67,12 +77,6 @@ int main_loop(redisContext *c, bool authentication_activated,
         }
     }
 
-
-    // Check the timestamp to make sure it is not a replay of an old message 
-    if (-1 == check_timestamp(&msg_parts))  {
-      goto err_timestamp;
-    }
-
     fluentd_sendmsg(&fluentd, copy_msg);
 
     // Build and send redis queries
@@ -99,13 +103,13 @@ int main_loop(redisContext *c, bool authentication_activated,
     freeReplyObject(reply);
 
     snprintf(value, 508, "%s:%s", msg_parts.taxi, msg_parts.operator);
-    reply = redisCommand(c, "ZADD timestamps %s %s", msg_parts.timestamp, value);
+    reply = redisCommand(c, "ZADD timestamps %s %s", rite_now, value);
     if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
     }
     freeReplyObject(reply);
 
-    reply = redisCommand(c, "ZADD timestamps_id %s %s", msg_parts.timestamp, msg_parts.taxi);
+    reply = redisCommand(c, "ZADD timestamps_id %s %s", rite_now, msg_parts.taxi);
     if (REDIS_REPLY_ERROR == reply->type) {
          goto err_redis_write;
     }
@@ -128,12 +132,8 @@ int main_loop(redisContext *c, bool authentication_activated,
   err_redis_connection: printf("Error connecting to database.  Skipping...\n");
     continue;
 
-err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply);
+  err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply);
     continue;
-
-  err_timestamp:        printf("Error checking timestamp.(%s)      Skipping stale or replayed message...\n", msg_parts.operator);
-    continue;
-
 
   err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n");
     continue;

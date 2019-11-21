@@ -9,17 +9,3 @@ static inline int check_hash (struct msg_parts *parts, char* apikey) {
     return r;
 }
 
-
-static inline int check_timestamp (struct msg_parts *parts) {
-	// Declare a few helpers.
-	int t;
-	struct timeval tv;
-	double ritenow, tstmp;
-
-	t = gettimeofday(&tv, NULL);
-	ritenow = (double)tv.tv_sec;
-	tstmp = atof(parts->timestamp);
-	if (ritenow - tstmp > 120) { return -1; } // skip old messages
-	// if (tstmp > ritenow) { return -1; }       // skip messages from the future
-	return 0;
-}
