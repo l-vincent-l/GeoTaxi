@@ -19,7 +19,7 @@ static inline int check_timestamp (struct msg_parts *parts) {
 	t = gettimeofday(&tv, NULL);
 	ritenow = (double)tv.tv_sec;
 	tstmp = atof(parts->timestamp);
-	if (ritenow - tstmp > 120) { return -1; } // skip old messages
+	if (ritenow - tstmp > 60) { return -1; } // skip old messages
 	// if (tstmp > ritenow) { return -1; }       // skip messages from the future
 	return 0;
 }
