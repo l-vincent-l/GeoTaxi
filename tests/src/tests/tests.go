@@ -89,7 +89,7 @@ func test_starting_message(channel_out <-chan string) {
 
 func test_msg_no_json(conn net.Conn, channel_out <-chan string) {
 	fmt.Fprintf(conn, "Hi UDP Server, How are you doing?")
-	asserts.Assert_chan(channel_out, "Error parsing json.            Skipping incorrectly formated message...")
+	asserts.Assert_chan_contains(channel_out, "Error parsing json.            Skipping incorrectly formated message...")
 }
 
 func test_user_100(conn net.Conn, channel_out <-chan string) {

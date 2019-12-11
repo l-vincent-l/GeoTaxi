@@ -32,19 +32,19 @@ int main_loop(redisContext *c, bool authentication_activated,
     memset(copy_msg, '\0', n);
     strcpy(copy_msg, msg);
 
-    // Parse JSON message into parts.
-    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                                   NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    if (-1 == parse_msg(&msg_parts, msg, n)) {
-      goto err_json;
-    }
-
     // We use the timestamp of the server to know if a taxi is up-to-date or not
     // because if the sent timestamp is wrong it's because the client time is wrong
     // not because there's a big lag. so we prefer to store this
     // We also store the sent timestamp in the HSET of the taxi
     t = gettimeofday(&tv, NULL);
     snprintf(rite_now, 30, "%f", (double)tv.tv_sec);
+
+    // Parse JSON message into parts.
+    msg_parts = (struct msg_parts){NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                                   NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    if (-1 == parse_msg(&msg_parts, msg, n)) {
+      goto err_json;
+    }
 
     if (authentication_activated) {
         char **apikey = get_apikey(msg_parts.operator, map_users);
@@ -135,7 +135,7 @@ int main_loop(redisContext *c, bool authentication_activated,
   err_redis_write:      printf("Error writing to database : %s      Skipping...\n", reply->str); freeReplyObject(reply);
     continue;
 
-  err_json:             printf("Error parsing json.            Skipping incorrectly formated message...\n");
+err_json:             printf("[%i]Error parsing json.            Skipping incorrectly formated message... %s\n", (int)tv.tv_sec, msg);
     continue;
 
   err_get_user:        printf("Error getting user.            Can't find %s\n", msg_parts.operator);
